@@ -110,14 +110,14 @@ jobs:
       - name: Set Version and Publish
         uses: actions/setup-node@v4
         with:
-          node-version: "24.x"
+          node-version: "22.x"
           registry-url: "https://registry.npmjs.org/"
           scope: "@open-rlb"
       - run: |
           cp ./package.json ./dist
           cd ./dist
           npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
-          npm publish --provenance --allow-same-version --access public
+          npm publish --allow-same-version
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_OPEN_RLB }}
 
