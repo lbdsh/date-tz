@@ -110,16 +110,16 @@ jobs:
       - name: Set Version and Publish
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
-          registry-url: "https://npm.pkg.github.com/"
-          scope: "@rlb-core"
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org/"
+          scope: "@open-rlb"
       - run: |
           cp ./package.json ./dist
           cd ./dist
           npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
-          npm publish --access restricted
+          npm publish --provenance --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.DEPLOY_PAT }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_OPEN_RLB }}
 
       - name: Tag repo with new version
         uses: cardinalby/git-tag-action@master
