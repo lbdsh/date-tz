@@ -117,7 +117,7 @@ jobs:
           cp ./package.json ./dist
           cd ./dist
           npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
-          npm publish --provenance --access public
+          npm publish --provenance --allow-same-version --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_OPEN_RLB }}
 
