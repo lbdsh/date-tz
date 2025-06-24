@@ -552,18 +552,18 @@ export class DateTz implements IDateTz {
       index += token.length + 1;
     }
 
-    const year = (dateComponents["YYYY"] as number) || (dateComponents["yyyy"] as number);
-    const month = (dateComponents["MM"] as number) - 1; // Months are zero-based
-    const day = dateComponents["DD"] as number;
+    const year = (dateComponents.YYYY as number) || (dateComponents.yyyy as number);
+    const month = (dateComponents.MM as number) - 1; // Months are zero-based
+    const day = dateComponents.DD as number;
     let hour = 0;
-    const ampm = (dateComponents["a"] || dateComponents["A"]) as string;
+    const ampm = (dateComponents.a || dateComponents.A) as string;
     if (ampm) {
-      hour = ampm.toUpperCase() === 'AM' ? (dateComponents["hh"] as number) : (dateComponents["hh"] as number) + 12;
+      hour = ampm.toUpperCase() === 'AM' ? (dateComponents.hh as number) : (dateComponents.hh as number) + 12;
     } else {
-      hour = dateComponents["HH"] as number;
+      hour = dateComponents.HH as number;
     }
-    const minute = dateComponents["mm"] as number;
-    const second = dateComponents["ss"] as number;
+    const minute = dateComponents.mm as number;
+    const second = dateComponents.ss as number;
 
     const daysInYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0) ? 366 : 365;
     const daysInMonth = (year: number, month: number) => month === 1 && daysInYear(year) === 366 ? 29 : daysPerMonth[month];
