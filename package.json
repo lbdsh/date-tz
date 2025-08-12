@@ -1,16 +1,46 @@
 {
   "name": "@open-rlb/date-tz",
   "version": "0.0.0",
-  "description": "",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "typescript": "^5.7.2"
-  }
+  },
+  "author": {
+    "email": "riolo.giuseppe@gmail.com",
+    "name": "Giuseppe Riolo",
+    "url": "https://github.com/RioloGiuseppe"
+  },
+  "description": "A lightweight JavaScript/TypeScript date-time utility with full timezone support, custom formatting, parsing, and manipulation features.",
+  "keywords": [
+    "date",
+    "time",
+    "datetime",
+    "timezone",
+    "date-format",
+    "date-parser",
+    "timezones",
+    "utc",
+    "timestamp",
+    "date-manipulation",
+    "date-comparison",
+    "timezone-conversion",
+    "typescript",
+    "javascript"
+  ],
+  "bugs": {
+    "url": "https://github.com/open-riolabs/date-tz/issues"
+  },
+  "homepage": "https://github.com/open-riolabs/date-tz#readme",
+  "readme": "readme.md",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-riolabs/date-tz.git"
+  },
+  "markdown": "github",
+  "license": "ISC"
 }
