@@ -59,8 +59,8 @@ Returns the string representation using the provided format.
 
 #### Format Tokens
 
-| Token | Meaning         |
-|-------|-----------------|
+| Token      | Meaning         |
+| ---------- | --------------- |
 | YYYY, yyyy | Full year       |
 | YY, yy     | Last 2 digits   |
 | MM         | Month (01–12)   |
