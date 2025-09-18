@@ -8,6 +8,7 @@ export interface IDateTz {
   isComparable?(other: IDateTz): boolean;
   toString?(): string;
   toString?(pattern: string): string;
+  toString?(pattern: string, locale?: string): string;
   add?(value: number, unit: 'minute' | 'hour' | 'day' | 'month' | 'year'): IDateTz;
   set?(value: number, unit: 'year' | 'month' | 'day' | 'hour' | 'minute'): IDateTz;
   convertToTimezone?(tz: string): IDateTz;

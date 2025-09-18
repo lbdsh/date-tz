@@ -88,7 +88,7 @@ export class DateTz implements IDateTz {
  */
   toString(): string;
   toString(pattern: string): string;
-  toString(pattern?: string): string {
+  toString(pattern?: string, locale?: string): string {
     if (!pattern) pattern = 'YYYY-MM-DD HH:mm:ss';
 
     // Calculate year, month, day, hours, minutes, seconds
@@ -141,6 +141,10 @@ export class DateTz implements IDateTz {
     const pm = hour >= 12 ? 'PM' : 'AM';
     const hour12 = hour % 12 || 12; // Convert to 12-hour format
 
+    if (!locale) locale = 'en';
+    let monthStr = new Date(year, month, 3).toLocaleString(locale || 'en', { month: 'long' });
+    monthStr = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
+
     // Map components to pattern tokens
     const tokens: Record<string, any> = {
       YYYY: year,
@@ -148,6 +152,7 @@ export class DateTz implements IDateTz {
       yyyy: year.toString(),
       yy: String(year).slice(-2),
       MM: String(month + 1).padStart(2, '0'),
+      LM: monthStr,
       DD: String(day).padStart(2, '0'),
       HH: String(hour).padStart(2, '0'),
       mm: String(minute).padStart(2, '0'),
@@ -159,7 +164,7 @@ export class DateTz implements IDateTz {
     };
 
     // Replace pattern tokens with actual values
-    return pattern.replace(/YYYY|yyyy|YY|yy|MM|DD|HH|hh|mm|ss|aa|AA|tz/g, (match) => tokens[match]);
+    return pattern.replace(/YYYY|yyyy|YY|yy|MM|LM|DD|HH|hh|mm|ss|aa|AA|tz/g, (match) => tokens[match]);
   }
 
   /**
