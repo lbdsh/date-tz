@@ -1,5 +1,5 @@
 {
-  "name": "@lbdsh/date-tz",
+  "name": "@lbd-sh/date-tz",
   "displayName": "Date TZ",
   "engineStrict": false,
   "version": "1.0.0",
@@ -31,13 +31,13 @@
   ],
   "author": {
     "email": "info@lbdsh.com",
-    "name": "LBD SRL",
+    "name": "lbd-sh",
     "url": "https://github.com/lbdsh"
   },
   "maintainers": [
     {
       "email": "info@lbdsh.com",
-      "name": "LBD SRL",
+      "name": "lbd-sh",
       "url": "https://github.com/lbdsh"
     }
   ],
