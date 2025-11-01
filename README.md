@@ -14,11 +14,12 @@
 6. [Core Concepts & Recipes](#core-concepts--recipes)
 7. [Daylight Saving Time Deep Dive](#daylight-saving-time-deep-dive)
 8. [Real-World Playbook](#real-world-playbook)
-9. [TypeScript & Tooling](#typescript--tooling)
-10. [Performance Tips](#performance-tips)
-11. [FAQ & Troubleshooting](#faq--troubleshooting)
-12. [Contributing](#contributing)
-13. [License](#license)
+9. [Build & Distribution](#build--distribution)
+10. [TypeScript & Tooling](#typescript--tooling)
+11. [Performance Tips](#performance-tips)
+12. [FAQ & Troubleshooting](#faq--troubleshooting)
+13. [Contributing](#contributing)
+14. [License](#license)
 
 ---
 
@@ -280,6 +281,21 @@ describe('billing cutoff', () => {
   });
 });
 ```
+
+---
+
+## Build & Distribution
+
+- The compiled CommonJS bundle plus declarations live in `dist/` (`index.js`, `index.d.ts`, maps, and helpers).
+- `package.json` already points `main` and `types` at the compiled output, so consumers never need the TypeScript sources.
+- Rebuild locally before opening a PR:
+
+  ```bash
+  npm ci
+  npm run build
+  ```
+
+- Publishing to npm is handled by the maintainers. Contributors can stop at the build step and submit a pull request.
 
 ---
 
