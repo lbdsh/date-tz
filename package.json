@@ -2,7 +2,7 @@
   "name": "@lbd-sh/date-tz",
   "displayName": "Date TZ",
   "engineStrict": false,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
