@@ -27,10 +27,18 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
           echo "always-auth=true" >> ~/.npmrc
+          npm config set @lbd-sh:registry https://registry.npmjs.org/
+          npm whoami || echo "(whoami failed - check token)"
       - name: Install dependencies
         run: npm ci
       - name: Build library
         run: npm run build
+      - name: Prepare dist package
+        run: |
+          cp package.json dist/
+          cp README.md dist/
+          [ -f package-lock.json ] && cp package-lock.json dist/
+          cp LICENSE* dist/ 2>/dev/null || true
       - name: Compute next patch version
         id: version
         run: |
@@ -63,7 +71,9 @@ jobs:
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public
+        working-directory: dist
+        run: |
+          npm publish --access public
       - name: Create git tag
         run: |
           git tag "v${{ steps.version.outputs.publish_version }}"
