@@ -25,6 +25,11 @@ export class DateTz implements IDateTz {
   timezone: string;
 
   /**
+   * Cache for the most recently resolved timezone offset.
+   */
+  private offsetCache?: { timestamp: number; info: { offsetSeconds: number; isDst: boolean; }; };
+
+  /**
    * The default date format used when converting to string.
    */
   public static defaultFormat = 'YYYY-MM-DD HH:mm:ss';
@@ -44,12 +49,13 @@ export class DateTz implements IDateTz {
         throw new Error(`Invalid timezone: ${value.timezone}`);
       }
     } else {
-      this.timezone = tz || 'UCT';
+      this.timezone = tz || 'UTC';
       if (!timezones[this.timezone]) {
         throw new Error(`Invalid timezone: ${tz}`);
       }
       this.timestamp = this.stripSMs(value);
     }
+    this.invalidateOffsetCache();
   }
 
   /**
@@ -92,7 +98,8 @@ export class DateTz implements IDateTz {
     if (!pattern) pattern = 'YYYY-MM-DD HH:mm:ss';
 
     // Calculate year, month, day, hours, minutes, seconds
-    const offset = (this.isDst ? timezones[this.timezone].dst : timezones[this.timezone].sdt) * 1000;
+    const offsetInfo = this.getOffsetInfo();
+    const offset = offsetInfo.offsetSeconds * 1000;
     let remainingMs = this.timestamp + offset;
     let year = epochYear;
 
@@ -272,12 +279,13 @@ export class DateTz implements IDateTz {
     })();
 
     this.timestamp = newTimestamp;
+    this.invalidateOffsetCache();
     return this;
   }
 
 
   private _year(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     let year = 1970;
     let days = Math.floor(remainingMs / MS_PER_DAY);
@@ -291,7 +299,7 @@ export class DateTz implements IDateTz {
   }
 
   private _month(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     let year = 1970;
     let days = Math.floor(remainingMs / MS_PER_DAY);
@@ -311,7 +319,7 @@ export class DateTz implements IDateTz {
   }
 
   private _day(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     let year = 1970;
     let days = Math.floor(remainingMs / MS_PER_DAY);
@@ -331,7 +339,7 @@ export class DateTz implements IDateTz {
   }
 
   private _hour(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     remainingMs %= MS_PER_DAY;
     let hour = Math.floor(remainingMs / MS_PER_HOUR);
@@ -339,7 +347,7 @@ export class DateTz implements IDateTz {
   }
 
   private _minute(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     remainingMs %= MS_PER_HOUR;
     let minute = Math.floor(remainingMs / MS_PER_MINUTE);
@@ -347,7 +355,7 @@ export class DateTz implements IDateTz {
   }
 
   private _dayOfWeek(considerDst = false) {
-    const offset = considerDst ? (timezones[this.timezone].dst * 1000) : (timezones[this.timezone].sdt * 1000);
+    const offset = this.getOffsetSeconds(considerDst) * 1000;
     let remainingMs = this.timestamp + offset;
     const date = new Date(remainingMs);
     return date.getDay();
@@ -364,6 +372,7 @@ export class DateTz implements IDateTz {
       throw new Error(`Invalid timezone: ${tz}`);
     }
     this.timezone = tz;
+    this.invalidateOffsetCache();
     return this;
   }
 
@@ -379,6 +388,7 @@ export class DateTz implements IDateTz {
     }
     const clone = new DateTz(this);
     clone.timezone = tz;
+    clone.invalidateOffsetCache();
     return clone;
   }
 
@@ -399,6 +409,82 @@ export class DateTz implements IDateTz {
 
     // Reconstruct the timestamp without seconds and milliseconds
     return days * MS_PER_DAY + hours * MS_PER_HOUR + minutes * MS_PER_MINUTE;
+  }
+
+  private invalidateOffsetCache() {
+    this.offsetCache = undefined;
+  }
+
+  private getOffsetSeconds(considerDst: boolean): number {
+    const tzInfo = timezones[this.timezone];
+    if (!tzInfo) {
+      throw new Error(`Invalid timezone: ${this.timezone}`);
+    }
+    if (!considerDst) {
+      return tzInfo.sdt;
+    }
+    return this.getOffsetInfo().offsetSeconds;
+  }
+
+  private getOffsetInfo(): { offsetSeconds: number; isDst: boolean; } {
+    if (this.offsetCache && this.offsetCache.timestamp === this.timestamp) {
+      return this.offsetCache.info;
+    }
+    const info = this.computeOffsetInfo();
+    this.offsetCache = { timestamp: this.timestamp, info };
+    return info;
+  }
+
+  private computeOffsetInfo(): { offsetSeconds: number; isDst: boolean; } {
+    const tzInfo = timezones[this.timezone];
+    if (!tzInfo) {
+      throw new Error(`Invalid timezone: ${this.timezone}`);
+    }
+    if (tzInfo.dst === tzInfo.sdt) {
+      return { offsetSeconds: tzInfo.sdt, isDst: false };
+    }
+    const actual = this.getIntlOffsetSeconds(this.timestamp);
+    if (actual !== null) {
+      if (actual !== tzInfo.sdt && actual !== tzInfo.dst) {
+        return { offsetSeconds: actual, isDst: actual > tzInfo.sdt };
+      }
+      return { offsetSeconds: actual, isDst: actual === tzInfo.dst };
+    }
+    return { offsetSeconds: tzInfo.sdt, isDst: false };
+  }
+
+  private getIntlOffsetSeconds(timestamp: number): number | null {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: this.timezone,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      const parts = formatter.formatToParts(new Date(timestamp));
+      const lookup = (type: string) => {
+        const part = parts.find(p => p.type === type);
+        if (!part) {
+          throw new Error(`Missing part ${type}`);
+        }
+        return Number(part.value);
+      };
+      const adjusted = Date.UTC(
+        lookup('year'),
+        lookup('month') - 1,
+        lookup('day'),
+        lookup('hour'),
+        lookup('minute'),
+        lookup('second')
+      );
+      return Math.round((adjusted - timestamp) / 1000);
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -496,6 +582,7 @@ export class DateTz implements IDateTz {
     })();
 
     this.timestamp = newTimestamp;
+    this.invalidateOffsetCache();
     return this;
   }
 
@@ -594,6 +681,7 @@ export class DateTz implements IDateTz {
     let remainingMs = timestamp - offset;
     const date = new DateTz(remainingMs, tz);
     date.timestamp -= date.isDst ? (timezones[tz].dst - timezones[tz].sdt) * 1000 : 0;
+    date.invalidateOffsetCache();
     return date;
   }
 
@@ -613,24 +701,7 @@ export class DateTz implements IDateTz {
   }
 
   get isDst(): boolean {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: this.timezone,
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-    const janD = Date.UTC(this._year(), 0, 1, this._hour() - timezones[this.timezone].sdt / 3600, this._minute(), 0);
-    const jan = formatter.format(+janD);
-    const now = formatter.format(this.timestamp);
-    const janMinutes = this.hhmmToMinutes(jan);
-    const nowMinutes = this.hhmmToMinutes(now);
-    return nowMinutes !== janMinutes;
-  }
-
-  private hhmmToMinutes(hhmm: string): number {
-    const [hours, minutes] = hhmm.split(':').map(Number);
-    return hours * 60 + minutes;
+    return this.getOffsetInfo().isDst;
   }
 
 

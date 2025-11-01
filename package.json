@@ -1,8 +1,8 @@
 {
-  "name": "@open-rlb/date-tz",
+  "name": "@lbdsh/date-tz",
   "displayName": "Date TZ",
   "engineStrict": false,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -30,25 +30,25 @@
     "javascript"
   ],
   "author": {
-    "email": "riolo.giuseppe@gmail.com",
-    "name": "Giuseppe Riolo",
-    "url": "https://github.com/RioloGiuseppe"
+    "email": "info@lbdsh.com",
+    "name": "LBD SRL",
+    "url": "https://github.com/lbdsh"
   },
   "maintainers": [
     {
-      "email": "riolo.giuseppe@gmail.com",
-      "name": "Giuseppe Riolo",
-      "url": "https://github.com/RioloGiuseppe"
+      "email": "info@lbdsh.com",
+      "name": "LBD SRL",
+      "url": "https://github.com/lbdsh"
     }
   ],
   "bugs": {
-    "url": "https://github.com/open-riolabs/date-tz/issues"
+    "url": "https://github.com/lbdsh/date-tz/issues"
   },
-  "homepage": "https://github.com/open-riolabs/date-tz#readme",
-  "readme": "https://github.com/open-riolabs/date-tz#readme",
+  "homepage": "https://github.com/lbdsh/date-tz#readme",
+  "readme": "https://github.com/lbdsh/date-tz#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/open-riolabs/date-tz.git"
+    "url": "git+https://github.com/lbdsh/date-tz.git"
   },
   "markdown": "github",
   "license": "ISC"
