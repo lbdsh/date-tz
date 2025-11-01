@@ -9,24 +9,21 @@ on:
 jobs:
   versioning:
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/dotnet/sdk:8.0
     outputs:
-      GitVersion_SemVer: ${{ env.GitVersion_SemVer }}
+      GitVersion_SemVer: ${{ steps.gitversion.outputs.semver }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Install GitVersion
-        run: |
-          dotnet tool install --global GitVersion.Tool --version 5.12.0
-          export PATH="$PATH:/github/home/.dotnet/tools"
-          dotnet-gitversion /config ./GitVersion.yml /nocache /verbosity Diagnostic /output buildserver
-        env:
-          GIT_DEPTH: 10000
+      - name: GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v0.10.2
+        with:
+          useConfigFile: true
+          configFilePath: GitVersion.yml
       - name: Show Calculated Version
-        run: echo "Version ⇒ ${{ env.GitVersion_SemVer }}"
+        run: echo "Version ⇒ ${{ steps.gitversion.outputs.semver }}"
 
   build:
     runs-on: ubuntu-latest
@@ -77,44 +74,46 @@ jobs:
         env:
           CURRENT_VERSION: ${{ needs.versioning.outputs.GitVersion_SemVer }}
         run: |
-          LATEST=$(npm view @lbd-sh/date-tz version 2>/dev/null || echo "0.0.0")
-          echo "Latest published version: $LATEST"
-          export LATEST_VERSION="$LATEST"
-          PUBLISH=$(node <<'NODE'
-            const currentRaw = process.env.CURRENT_VERSION || '0.0.0';
-            const latestRaw = process.env.LATEST_VERSION || '0.0.0';
-            const clean = (v) => v.split('-')[0];
-            const parts = (v) => clean(v).split('.').map((n) => {
-              const parsed = parseInt(n, 10);
-              return Number.isFinite(parsed) ? parsed : 0;
-            });
-            const compare = (a, b) => {
-              for (let i = 0; i < 3; i++) {
-                if ((a[i] || 0) > (b[i] || 0)) return 1;
-                if ((a[i] || 0) < (b[i] || 0)) return -1;
-              }
-              return 0;
-            };
-            let current = parts(currentRaw);
-            const latest = parts(latestRaw);
-            if (compare(current, latest) <= 0) {
-              current = [...latest];
-              current[2] = (current[2] || 0) + 1;
-            }
-            const publish = current.map((n) => Math.max(0, n)).join('.');
-            process.stdout.write(publish);
-            NODE
-            )
-          echo "publish_version=$PUBLISH" >> "$GITHUB_OUTPUT"
-          echo "Publish version: $PUBLISH"
+          set -euo pipefail
+          latest=$(npm view @lbd-sh/date-tz version 2>/dev/null || echo "0.0.0")
+          echo "Latest published version: $latest"
+          current="${CURRENT_VERSION:-0.0.0}"
+          to_triplet() {
+            local ver="$1"
+            ver=${ver%%-*}
+            local major minor patch
+            IFS=. read -r major minor patch <<< "$ver"
+            major=${major:-0}
+            minor=${minor:-0}
+            patch=${patch:-0}
+            echo "$major $minor $patch"
+          }
+          read -r cur_major cur_minor cur_patch <<< "$(to_triplet "$current")"
+          read -r latest_major latest_minor latest_patch <<< "$(to_triplet "$latest")"
+          if [ "$cur_major" -lt "$latest_major" ] ||
+             { [ "$cur_major" -eq "$latest_major" ] && [ "$cur_minor" -lt "$latest_minor" ]; } ||
+             { [ "$cur_major" -eq "$latest_major" ] && [ "$cur_minor" -eq "$latest_minor" ] && [ "$cur_patch" -le "$latest_patch" ]; }; then
+            cur_major=$latest_major
+            cur_minor=$latest_minor
+            cur_patch=$((latest_patch + 1))
+          fi
+          printf -v publish '%d.%d.%d' "$cur_major" "$cur_minor" "$cur_patch"
+          echo "Publish version: $publish"
+          echo "publish_version=$publish" >> "$GITHUB_OUTPUT"
+      - name: Update package version
+        run: npm version ${{ steps.version.outputs.publish_version }} --git-tag-version false
+      - name: Commit version bump
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(release): bump version to ${{ steps.version.outputs.publish_version }}"
+          file_pattern: |
+            package.json
+            package-lock.json
       - name: Prepare package contents
         run: |
           cp package.json dist/
           cp package-lock.json dist/
           cp README.md dist/
-      - name: Version bump
-        working-directory: dist
-        run: npm version ${{ steps.version.outputs.publish_version }} --git-tag-version false
       - name: Publish to npm
         working-directory: dist
         env:
