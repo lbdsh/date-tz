@@ -72,6 +72,41 @@ jobs:
         with:
           name: dist
           path: dist
+      - name: Determine publish version
+        id: version
+        env:
+          CURRENT_VERSION: ${{ needs.versioning.outputs.GitVersion_SemVer }}
+        run: |
+          LATEST=$(npm view @lbd-sh/date-tz version 2>/dev/null || echo "0.0.0")
+          echo "Latest published version: $LATEST"
+          export LATEST_VERSION="$LATEST"
+          PUBLISH=$(node <<'NODE'
+            const currentRaw = process.env.CURRENT_VERSION || '0.0.0';
+            const latestRaw = process.env.LATEST_VERSION || '0.0.0';
+            const clean = (v) => v.split('-')[0];
+            const parts = (v) => clean(v).split('.').map((n) => {
+              const parsed = parseInt(n, 10);
+              return Number.isFinite(parsed) ? parsed : 0;
+            });
+            const compare = (a, b) => {
+              for (let i = 0; i < 3; i++) {
+                if ((a[i] || 0) > (b[i] || 0)) return 1;
+                if ((a[i] || 0) < (b[i] || 0)) return -1;
+              }
+              return 0;
+            };
+            let current = parts(currentRaw);
+            const latest = parts(latestRaw);
+            if (compare(current, latest) <= 0) {
+              current = [...latest];
+              current[2] = (current[2] || 0) + 1;
+            }
+            const publish = current.map((n) => Math.max(0, n)).join('.');
+            process.stdout.write(publish);
+            NODE
+            )
+          echo "publish_version=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "Publish version: $PUBLISH"
       - name: Prepare package contents
         run: |
           cp package.json dist/
@@ -79,7 +114,7 @@ jobs:
           cp README.md dist/
       - name: Version bump
         working-directory: dist
-        run: npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
+        run: npm version ${{ steps.version.outputs.publish_version }} --git-tag-version false
       - name: Publish to npm
         working-directory: dist
         env:
