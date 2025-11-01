@@ -28,7 +28,17 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
           echo "always-auth=true" >> ~/.npmrc
           npm config set @lbd-sh:registry https://registry.npmjs.org/
-          npm whoami || echo "(whoami failed - check token)"
+          npm whoami
+      - name: Validate npm token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NPM_TOKEN}" ]; then
+            echo "NPM_TOKEN non impostato nei secrets del repository" >&2
+            exit 1
+          fi
+          echo "Token presente. Utente npm: $(npm whoami)"
       - name: Install dependencies
         run: npm ci
       - name: Build library
