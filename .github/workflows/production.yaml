@@ -1,10 +1,11 @@
-name: CI/CD Workflow
+name: Release
 
 on:
   workflow_dispatch:
   push:
     branches:
       - master
+
 jobs:
   versioning:
     runs-on: ubuntu-latest
@@ -13,117 +14,78 @@ jobs:
     outputs:
       GitVersion_SemVer: ${{ env.GitVersion_SemVer }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4.1.1
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 0 indica di ottenere tutta la cronologia
-      - name: Install GitVersion.Tool
-        id: gitversion
+          fetch-depth: 0
+      - name: Install GitVersion
         run: |
           dotnet tool install --global GitVersion.Tool --version 5.12.0
           export PATH="$PATH:/github/home/.dotnet/tools"
           dotnet-gitversion /config ./GitVersion.yml /nocache /verbosity Diagnostic /output buildserver
         env:
           GIT_DEPTH: 10000
-      - name: Display Version
-        run: echo "Version> ${{ env.GitVersion_SemVer }}"
-
-  dependencies:
-    runs-on: ubuntu-latest
-    container:
-      image: node:alpine
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-modules-
-      - name: Install dependencies
-        run: |
-          npm config set "@rlb-core:registry=https://npm.pkg.github.com/rlb-core/"
-          npm config set "//npm.pkg.github.com/rlb-core/:_authToken" "${{ secrets.DEPLOY_PAT }}"
-          npm install
-      - name: Create node_modules TarGz
-        run: tar -czf node_modules.tar.gz node_modules
-      - name: Upload TarGz Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: node_modules-tar # Artifact name
-          path: node_modules.tar.gz # Path to the created `.tar.gz`
+      - name: Show Calculated Version
+        run: echo "Version ⇒ ${{ env.GitVersion_SemVer }}"
 
   build:
-    needs: dependencies
     runs-on: ubuntu-latest
-    container:
-      image: node:lts-buster
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: Download TarGz Artifact
-        uses: actions/download-artifact@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          name: node_modules-tar # The artifact name
-          path: ./ # Where to download the artifact
-      - name: Extract node_modules
-        run: tar -xzf node_modules.tar.gz
-      - name: Build
-        run: |
-          npm link husky
-          npm link @nestjs/cli
-          npm run build
-      - name: Upload build artifact
+          node-version: "22.x"
+      - name: Install dependencies
+        run: npm ci
+      - name: Build library
+        run: npm run build
+      - name: Upload dist artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts
-          path: |
-            dist
+          name: dist
+          path: dist
 
-  deploy:
+  publish:
     runs-on: ubuntu-latest
+    needs:
+      - build
+      - versioning
     permissions:
       contents: write
       packages: write
       deployments: write
-    needs:
-      - build
-      - versioning
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
-      - name: Download TarGz Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: node_modules-tar
-          path: ./
-      - name: Extract node_modules
-        run: tar -xzf node_modules.tar.gz
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: dist
-
-      - name: Set Version and Publish
+      - name: Setup Node for publish
         uses: actions/setup-node@v4
         with:
           node-version: "22.x"
           registry-url: "https://registry.npmjs.org/"
-          scope: "@open-rlb"
-      - run: |
-          cp ./package.json ./dist
-          cp ./package-lock.json ./dist
-          cp ./README.md ./dist
-          cd ./dist
-          npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
-          npm publish --allow-same-version --access public
+          scope: "@lbd-sh"
+      - name: Install dependencies
+        run: npm ci
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Prepare package contents
+        run: |
+          cp package.json dist/
+          cp package-lock.json dist/
+          cp README.md dist/
+      - name: Version bump
+        working-directory: dist
+        run: npm version ${{ needs.versioning.outputs.GitVersion_SemVer }} --git-tag-version false
+      - name: Publish to npm
+        working-directory: dist
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_OPEN_RLB }}
-
-      - name: Tag repo with new version
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+      - name: Tag repository
         uses: cardinalby/git-tag-action@master
         env:
           TAG: ${{ needs.versioning.outputs.GitVersion_SemVer }}
