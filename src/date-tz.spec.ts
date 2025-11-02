@@ -1,213 +1,206 @@
+import { describe, expect, it } from 'vitest';
+import { IDateTz } from './idate-tz';
 import { DateTz } from './date-tz';
 
+const BASE_TIMESTAMP = Date.UTC(2021, 0, 1, 0, 0); // 2021-01-01 00:00 UTC
+
 describe('DateTz', () => {
-  it('should create an instance with the correct date and timezone', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.datetime).toBe(1609459200000);
-    expect(dateTz.timezone).toBe(0);
+  it('creates an instance from a timestamp and timezone', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(dateTz.timestamp).toBe(BASE_TIMESTAMP);
+    expect(dateTz.timezone).toBe('UTC');
   });
 
-  it('should compare two DateTz instances with the same timezone', () => {
-    const dateTz1 = new DateTz(1609459200000, 0);
-    const dateTz2 = new DateTz(1609545600000, 0); // 2021-01-02 00:00:00 UTC
-    expect(dateTz1.compare(dateTz2)).toBeLessThan(0);
+  it('creates an instance from an IDateTz-like object', () => {
+    const dateTz = new DateTz({ timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' });
+    expect(dateTz.timestamp).toBe(BASE_TIMESTAMP);
+    expect(dateTz.timezone).toBe('Europe/Rome');
   });
 
-  it('should throw an error when comparing two DateTz instances with different timezones', () => {
-    const dateTz1 = new DateTz(1609459200000, 0);
-    const dateTz2 = new DateTz(1609459200000, 1);
-    expect(() => dateTz1.compare(dateTz2)).toThrow('Cannot compare dates with different timezones');
+  it('compares two instances in the same timezone', () => {
+    const earlier = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const later = new DateTz(BASE_TIMESTAMP + 24 * 60 * 60 * 1000, 'UTC');
+    expect(earlier.compare(later)).toBeLessThan(0);
   });
 
-  it('should format the date correctly with the default pattern', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
+  it('returns zero when comparing identical timestamps', () => {
+    const a = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const b = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(a.compare(b)).toBe(0);
+  });
+
+  it('compares against plain IDateTz objects', () => {
+    const deltaMinutes = 5;
+    const a = new DateTz(BASE_TIMESTAMP + deltaMinutes * 60_000, 'UTC');
+    const other: IDateTz = { timestamp: BASE_TIMESTAMP, timezone: 'UTC' };
+    expect(a.compare(other)).toBe(deltaMinutes * 60_000);
+  });
+
+  it('throws when comparing instances from different timezones', () => {
+    const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    expect(() => utc.compare(rome)).toThrow('Cannot compare dates with different timezones');
+  });
+
+  it('formats using the default pattern', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
     expect(dateTz.toString()).toBe('2021-01-01 00:00:00');
   });
 
-  it('should format the date correctly with a custom pattern', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.toString('DD/MM/YYYY')).toBe('01/01/2021');
-  });
-
-  it('should add minutes correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(30, 'minute');
-    expect(dateTz.toString()).toBe('2021-01-01 00:30:00');
-  });
-
-  it('should add hours correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(2, 'hour');
-    expect(dateTz.toString()).toBe('2021-01-01 02:00:00');
-  });
-
-  it('should add days correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(1, 'day');
-    expect(dateTz.toString()).toBe('2021-01-02 00:00:00');
-  });
-
-  it('should add months correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(1, 'month');
-    expect(dateTz.toString()).toBe('2021-02-01 00:00:00');
-  });
-
-  it('should add years correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(1, 'year');
-    expect(dateTz.toString()).toBe('2022-01-01 00:00:00');
-  });
-
-  it('should return the correct year', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.year).toBe(2021);
-  });
-
-  it('should return the correct month', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.month).toBe(0); // January
-  });
-
-  it('should return the correct day', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.day).toBe(1);
-  });
-
-  it('should return the correct hour', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.hour).toBe(0);
-  });
-
-  it('should return the correct minute', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.minute).toBe(0);
-  });
-
-  it('should create an instance with the correct date and timezone', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.datetime).toBe(1609459200000);
-    expect(dateTz.timezone).toBe(0);
-  });
-
-  it('should compare two DateTz instances with the same timezone', () => {
-    const dateTz1 = new DateTz(1609459200000, 0);
-    const dateTz2 = new DateTz(1609545600000, 0); // 2021-01-02 00:00:00 UTC
-    expect(dateTz1.compare(dateTz2)).toBeLessThan(0);
-  });
-
-  it('should throw an error when comparing two DateTz instances with different timezones', () => {
-    const dateTz1 = new DateTz(1609459200000, 0);
-    const dateTz2 = new DateTz(1609459200000, 1);
-    expect(() => dateTz1.compare(dateTz2)).toThrow('Cannot compare dates with different timezones');
-  });
-
-  it('should format the date correctly with the default pattern', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
+  it('rounds timestamps down to the nearest minute', () => {
+    const withSeconds = BASE_TIMESTAMP + 45_000 + 500;
+    const dateTz = new DateTz(withSeconds, 'UTC');
+    expect(dateTz.timestamp).toBe(BASE_TIMESTAMP);
     expect(dateTz.toString()).toBe('2021-01-01 00:00:00');
   });
 
-  it('should format the date correctly with a custom pattern', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.toString('DD/MM/YYYY')).toBe('01/01/2021');
+  it('formats using a custom pattern and timezone token', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    expect(dateTz.toString('DD/MM/YYYY HH:mm tz')).toBe('01/01/2021 01:00 Europe/Rome');
   });
 
-  it('should add minutes correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(30, 'minute');
-    expect(dateTz.toString()).toBe('2021-01-01 00:30:00');
+  it('formats using month names and 12-hour tokens', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(dateTz.toString('LM DD, YYYY hh:mm aa')).toBe('January 01, 2021 12:00 am');
   });
 
-  it('should add hours correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.add(2, 'hour');
-    expect(dateTz.toString()).toBe('2021-01-01 02:00:00');
+  it('retains chaining behaviour for add', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const result = dateTz.add(1, 'day');
+    expect(result).toBe(dateTz);
   });
 
-  it('should add days correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
+  it('adds time in different units', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    dateTz.add(90, 'minute'); // +1h30
+    expect(dateTz.toString()).toBe('2021-01-01 01:30:00');
     dateTz.add(1, 'day');
-    expect(dateTz.toString()).toBe('2021-01-02 00:00:00');
-  });
-
-  it('should add months correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
+    expect(dateTz.toString()).toBe('2021-01-02 01:30:00');
     dateTz.add(1, 'month');
-    expect(dateTz.toString()).toBe('2021-02-01 00:00:00');
-  });
-
-  it('should add years correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
+    expect(dateTz.toString()).toBe('2021-02-02 01:30:00');
     dateTz.add(1, 'year');
-    expect(dateTz.toString()).toBe('2022-01-01 00:00:00');
+    expect(dateTz.toString()).toBe('2022-02-02 01:30:00');
   });
 
-  it('should return the correct year', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.year).toBe(2021);
+  it('sets specific components of the date', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    dateTz.set(2023, 'year')
+      .set(2, 'month') // February (1-based)
+      .set(15, 'day')
+      .set(9, 'hour')
+      .set(45, 'minute');
+    expect(dateTz.toString()).toBe('2023-02-15 09:45:00');
   });
 
-  it('should return the correct month', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.month).toBe(0); // January
+  it('handles leap year arithmetic when adding days', () => {
+    const leap = new DateTz(Date.UTC(2020, 1, 28, 0, 0), 'UTC');
+    leap.add(1, 'day');
+    expect(leap.toString()).toBe('2020-02-29 00:00:00');
+    leap.add(1, 'day');
+    expect(leap.toString()).toBe('2020-03-01 00:00:00');
   });
 
-  it('should return the correct day', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.day).toBe(1);
+  it('parses a date string with a custom pattern', () => {
+    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'UTC');
+    expect(parsed.toString()).toBe('2021-01-05 18:30:00');
+    expect(parsed.timezone).toBe('UTC');
   });
 
-  it('should return the correct hour', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.hour).toBe(0);
+  it('parses using a non-UTC timezone', () => {
+    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'Europe/Rome');
+    expect(parsed.timezone).toBe('Europe/Rome');
+    expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-01-05 18:30 Europe/Rome');
   });
 
-  it('should return the correct minute', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    expect(dateTz.minute).toBe(0);
+  it('throws when parsing a 12-hour pattern without an AM/PM marker', () => {
+    expect(() => DateTz.parse('2021-01-05 06:30', 'YYYY-MM-DD hh:mm', 'UTC'))
+      .toThrow('AM/PM marker (aa or AA) is required when using 12-hour format (hh)');
   });
 
-  it('should parse a date string correctly', () => {
-    const dateTz = DateTz.parse('2021--01-01 00:00:00', 'YYYY--MM-DD HH:mm', 0);
-    expect(dateTz.datetime).toBe(1609459200000);
-    expect(dateTz.timezone).toBe(0);
+  it('throws when parsing with an unknown timezone', () => {
+    expect(() => DateTz.parse('2021-01-05 06:30:00', 'YYYY-MM-DD HH:mm:ss', 'Mars/Phobos'))
+      .toThrow('Invalid timezone: Mars/Phobos');
   });
 
-  it('should set the year correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.set(2022, 'year');
-    expect(dateTz.toString()).toBe('2022-01-01 00:00:00');
+  it('clones to a different timezone without mutating the original', () => {
+    const original = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const clone = original.cloneToTimezone('Europe/Rome');
+    expect(original.timezone).toBe('UTC');
+    expect(clone.timezone).toBe('Europe/Rome');
+    expect(clone.toString()).toBe('2021-01-01 01:00:00');
+    expect(clone.timestamp).toBe(original.timestamp);
+    expect(clone).not.toBe(original);
   });
 
-  it('should set the month correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.set(2, 'month');
-    expect(dateTz.toString()).toBe('2021-02-01 00:00:00');
+  it('converts to a different timezone in place', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const originalTimestamp = dateTz.timestamp;
+    const result = dateTz.convertToTimezone('Europe/Rome');
+    expect(result).toBe(dateTz);
+    expect(dateTz.timezone).toBe('Europe/Rome');
+    expect(dateTz.toString()).toBe('2021-01-01 01:00:00');
+    expect(dateTz.timestamp).toBe(originalTimestamp);
   });
 
-  it('should set the day correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.set(2, 'day');
-    expect(dateTz.toString()).toBe('2021-01-02 00:00:00');
+  it('exposes timezone offset information', () => {
+    const la = new DateTz(BASE_TIMESTAMP, 'America/Los_Angeles');
+    expect(la.timezoneOffset).toEqual({ sdt: -28800, dst: -25200 });
   });
 
-  it('should set the hour correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.set(2, 'hour');
-    expect(dateTz.toString()).toBe('2021-01-01 02:00:00');
+  it('reports comparability correctly', () => {
+    const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    expect(utc.isComparable(rome)).toBe(false);
+    expect(utc.isComparable(new DateTz(BASE_TIMESTAMP, 'UTC'))).toBe(true);
+    const plain: IDateTz = { timestamp: BASE_TIMESTAMP, timezone: 'UTC' };
+    expect(utc.isComparable(plain)).toBe(true);
   });
 
-  it('should set the minute correctly', () => {
-    const dateTz = new DateTz(1609459200000, 0); // 2021-01-01 00:00:00 UTC
-    dateTz.set(30, 'minute');
-    expect(dateTz.toString()).toBe('2021-01-01 00:30:00');
+  it('exposes date parts adjusted for timezone', () => {
+    const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    expect(rome.year).toBe(2021);
+    expect(rome.month).toBe(0);
+    expect(rome.day).toBe(1);
+    expect(rome.hour).toBe(1);
+    expect(rome.minute).toBe(0);
+    expect(rome.dayOfWeek).toBe(5);
   });
 
-  it('should convert timezone name to offset correctly', () => {
-    expect(DateTz.tzNameToOffset('PST')).toBe(-8);
+  it('detects daylight saving time boundaries', () => {
+    const winter = new DateTz(Date.UTC(2021, 0, 1, 20, 0), 'America/Los_Angeles');
+    const summer = new DateTz(Date.UTC(2021, 6, 1, 19, 0), 'America/Los_Angeles');
+    expect(winter.isDst).toBe(false);
+    expect(summer.isDst).toBe(true);
   });
 
-  it('should convert timezone offset to name correctly', () => {
-    expect(DateTz.tzOffsetToName(-8)).toBe('PST');
+  it('reports isDst as false for timezones without daylight saving time', () => {
+    const accra = new DateTz(BASE_TIMESTAMP, 'Africa/Accra');
+    expect(accra.isDst).toBe(false);
+  });
+
+  it('instantiates via now with the requested timezone', () => {
+    const current = DateTz.now('Europe/Rome');
+    expect(current.timezone).toBe('Europe/Rome');
+  });
+
+  it('defaults to UTC when calling now without arguments', () => {
+    const current = DateTz.now();
+    expect(current.timezone).toBe('UTC');
+  });
+
+  it('rejects unknown timezones on construction and conversion', () => {
+    expect(() => new DateTz(BASE_TIMESTAMP, 'Mars/Phobos')).toThrow('Invalid timezone: Mars/Phobos');
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(() => dateTz.convertToTimezone('Mars/Phobos')).toThrow('Invalid timezone: Mars/Phobos');
+  });
+
+  it('rejects unknown timezones when cloning', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(() => dateTz.cloneToTimezone('Mars/Phobos')).toThrow('Invalid timezone: Mars/Phobos');
+  });
+
+  it('rejects conversion to plain offsets by id mismatch', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(() => dateTz.convertToTimezone('GMT+1')).toThrow('Invalid timezone: GMT+1');
   });
 });
