@@ -7,10 +7,13 @@
   "types": "index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "@types/node": "^24.9.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.6"
   },
   "description": "A lightweight JavaScript/TypeScript date-time utility with full timezone support, custom formatting, parsing, and manipulation features.",
   "keywords": [
