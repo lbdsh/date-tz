@@ -1,6 +1,12 @@
 # Date TZ ⏰✨
 
-`DateTz` is the timezone swiss‑army knife for modern JavaScript and TypeScript projects. It keeps minute-precision timestamps aligned with IANA zones, gracefully glides across daylight-saving transitions, and exposes a lightweight API that feels familiar yet powerful. Whether you are building dashboards, schedulers, or automation pipelines, DateTz keeps your time math honest. 🌍
+<p align="center">
+  <a href="https://www.transfeero.com" target="_blank" rel="noopener">
+    <img src="https://transfeeropublic.s3.eu-west-1.amazonaws.com/logo_transfeero_final_black.png" alt="Transfeero" height="60" />
+  </a>
+</p>
+
+`DateTz` is the timezone swiss‑army knife for modern JavaScript and TypeScript projects. It keeps minute-precision timestamps aligned with IANA zones, gracefully glides across daylight-saving transitions, and exposes a lightweight API that feels familiar yet powerful. Whether you are building dashboards, schedulers, or automation pipelines, DateTz keeps your time math honest. 🌍 DateTz is maintained and proudly sponsored by [Transfeero](https://www.transfeero.com), the premium airport transfer platform.
 
 ---
 
@@ -352,4 +358,7 @@ Community feedback keeps DateTz sharp—thanks for being part of it! 🙌
 
 ## License
 
-ISC © lbd-sh
+MIT © lbd-sh
+
+Created with ❤️ by [Transfeero](https://www.transfeero.com) and friends.  
+Offered by **LBD Srl** · [www.lbdsh.com](https://www.lbdsh.com)

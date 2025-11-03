@@ -54,5 +54,5 @@
     "url": "git+https://github.com/lbdsh/date-tz.git"
   },
   "markdown": "github",
-  "license": "ISC"
+  "license": "MIT"
 }
