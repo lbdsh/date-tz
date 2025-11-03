@@ -3,10 +3,14 @@
   "displayName": "Date TZ",
   "engineStrict": false,
   "version": "1.0.10",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "test": "vitest run"
   },
   "devDependencies": {
