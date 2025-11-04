@@ -112,6 +112,18 @@ describe('DateTz', () => {
     expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-01-05 18:30 Europe/Rome');
   });
 
+  it('parses the DST spring-forward gap by rolling forward to the first valid instant', () => {
+    const parsed = DateTz.parse('2021-03-14 02:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York');
+    expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-03-14 03:30 America/New_York');
+    expect(parsed.isDst).toBe(true);
+  });
+
+  it('prefers the DST occurrence when parsing ambiguous fall-back times', () => {
+    const parsed = DateTz.parse('2021-11-07 01:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York');
+    expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-11-07 01:30 America/New_York');
+    expect(parsed.isDst).toBe(true);
+  });
+
   it('throws when parsing a 12-hour pattern without an AM/PM marker', () => {
     expect(() => DateTz.parse('2021-01-05 06:30', 'YYYY-MM-DD hh:mm', 'UTC'))
       .toThrow('AM/PM marker (aa or AA) is required when using 12-hour format (hh)');

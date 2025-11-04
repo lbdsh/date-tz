@@ -1138,32 +1138,71 @@ export class DateTz implements IDateTz {
     const minute = dateComponents.mm as number;
     const second = dateComponents.ss as number;
 
-    const daysInYear = (year: number) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0) ? 366 : 365;
-    const daysInMonth = (year: number, month: number) => month === 1 && daysInYear(year) === 366 ? 29 : daysPerMonth[month];
+    const daysInYear = (yr: number) => (yr % 4 === 0 && yr % 100 !== 0) || (yr % 400 === 0) ? 366 : 365;
+    const daysInMonth = (yr: number, mon: number) => mon === 1 && daysInYear(yr) === 366 ? 29 : daysPerMonth[mon];
 
     let timestamp = 0;
 
-    // Add years
     for (let y = 1970; y < year; y++) {
       timestamp += daysInYear(y) * MS_PER_DAY;
     }
 
-    // Add months
     for (let m = 0; m < month; m++) {
       timestamp += daysInMonth(year, m) * MS_PER_DAY;
     }
-    // Add days, hours, minutes, and seconds
+
     timestamp += (day - 1) * MS_PER_DAY;
     timestamp += hour * MS_PER_HOUR;
     timestamp += minute * MS_PER_MINUTE;
     timestamp += second * 1000;
 
-    const offset = (timezones[tz].sdt) * 1000;
-    let remainingMs = timestamp - offset;
-    const date = new DateTz(remainingMs, tz);
-    date.timestamp -= date.isDst ? (timezones[tz].dst - timezones[tz].sdt) * 1000 : 0;
-    date.invalidateOffsetCache();
-    return date;
+    const tzInfo = timezones[tz];
+    const offsets = Array.from(new Set([tzInfo.sdt, tzInfo.dst]));
+    const targetUtc = Date.UTC(year, month, day, hour, minute, 0);
+
+    type CandidateRecord = { date: DateTz; delta: number; isDst: boolean; };
+    const exactMatches: CandidateRecord[] = [];
+    let nextCandidate: CandidateRecord | undefined;
+    let previousCandidate: CandidateRecord | undefined;
+
+    for (const offsetSeconds of offsets) {
+      const candidateTs = timestamp - offsetSeconds * 1000;
+      const candidate = new DateTz(candidateTs, tz);
+      const candidateUtc = Date.UTC(candidate.year, candidate.month, candidate.day, candidate.hour, candidate.minute, 0);
+      const delta = candidateUtc - targetUtc;
+      const record: CandidateRecord = { date: candidate, delta, isDst: candidate.isDst };
+
+      if (delta === 0) {
+        exactMatches.push(record);
+        continue;
+      }
+      if (delta > 0) {
+        if (!nextCandidate || delta < nextCandidate.delta || (delta === nextCandidate.delta && record.isDst && !nextCandidate.isDst)) {
+          nextCandidate = record;
+        }
+        continue;
+      }
+      if (!previousCandidate || delta > previousCandidate.delta || (delta === previousCandidate.delta && record.isDst && !previousCandidate.isDst)) {
+        previousCandidate = record;
+      }
+    }
+
+    let result: DateTz | undefined;
+    if (exactMatches.length > 0) {
+      exactMatches.sort((a, b) => Number(b.isDst) - Number(a.isDst));
+      result = exactMatches[0].date;
+    } else if (nextCandidate) {
+      result = nextCandidate.date;
+    } else if (previousCandidate) {
+      result = previousCandidate.date;
+    }
+
+    if (!result) {
+      result = new DateTz(timestamp, tz);
+    }
+
+    result.invalidateOffsetCache();
+    return result;
   }
 
   /**
