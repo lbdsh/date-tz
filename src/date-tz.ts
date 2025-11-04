@@ -1,13 +1,59 @@
-import { IDateTz } from "./idate-tz";
+import { DateTzDiffUnit, DateTzDurationLike, DateTzGranularity, DateTzInclusivity, IDateTz } from "./idate-tz";
 import { timezones } from "./timezones";
 
+const MS_PER_SECOND = 1000;
 const MS_PER_MINUTE = 60000;
 const MS_PER_HOUR = 3600000;
 const MS_PER_DAY = 86400000;
+const MS_PER_WEEK = MS_PER_DAY * 7;
 
 // Epoch time constants
 const epochYear = 1970;
 const daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+const UNIT_ALIASES: Record<string, DateTzDiffUnit> = {
+  ms: 'millisecond',
+  millisecond: 'millisecond',
+  milliseconds: 'millisecond',
+  s: 'second',
+  sec: 'second',
+  second: 'second',
+  seconds: 'second',
+  m: 'minute',
+  min: 'minute',
+  minute: 'minute',
+  minutes: 'minute',
+  h: 'hour',
+  hr: 'hour',
+  hour: 'hour',
+  hours: 'hour',
+  d: 'day',
+  day: 'day',
+  days: 'day',
+  w: 'week',
+  wk: 'week',
+  week: 'week',
+  weeks: 'week',
+  M: 'month',
+  mon: 'month',
+  month: 'month',
+  months: 'month',
+  y: 'year',
+  yr: 'year',
+  year: 'year',
+  years: 'year'
+};
+
+const GRANULARITY_UNITS: readonly DateTzGranularity[] = ['minute', 'hour', 'day', 'week', 'month', 'year'];
+
+type LocalParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
 
 /**
  * Represents a date and time with a specific timezone.
@@ -283,6 +329,267 @@ export class DateTz implements IDateTz {
     return this;
   }
 
+  /**
+   * Subtracts a specified amount of time from the DateTz instance.
+   * @param value - The amount of time to subtract.
+   * @param unit - The unit of time.
+   */
+  subtract(value: number, unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year') {
+    this.shift(unit, -value);
+    return this;
+  }
+
+  /**
+   * Adds a duration object to the DateTz instance (Luxon-style).
+   * @param duration - Object containing duration components.
+   */
+  plus(duration: DateTzDurationLike = {}) {
+    for (const [rawUnit, rawValue] of Object.entries(duration)) {
+      if (rawValue === undefined || rawValue === 0) {
+        continue;
+      }
+      const normalized = this.normalizeDiffUnit(rawUnit);
+      const value = rawValue as number;
+      if (normalized === 'millisecond' || normalized === 'second') {
+        throw new Error(`Unsupported duration unit: ${rawUnit}`);
+      }
+      this.shift(normalized, value);
+    }
+    return this;
+  }
+
+  /**
+   * Subtracts a duration object from the DateTz instance (Luxon-style).
+   * @param duration - Object containing duration components.
+   */
+  minus(duration: DateTzDurationLike = {}) {
+    const inverted: DateTzDurationLike = {};
+    for (const [unit, rawValue] of Object.entries(duration)) {
+      if (rawValue === undefined || rawValue === 0) {
+        continue;
+      }
+      inverted[unit as keyof DateTzDurationLike] = -(rawValue as number);
+    }
+    return this.plus(inverted);
+  }
+
+  /**
+   * Computes the difference between this instance and another.
+   * @param other - The date to compare with.
+   * @param unit - The unit of the resulting difference.
+   * @param asFloat - Whether to return a floating point result.
+   */
+  diff(other: IDateTz, unit: DateTzDiffUnit = 'millisecond', asFloat = false): number {
+    const normalized = this.normalizeDiffUnit(unit);
+    const comparable = this.ensureComparable(other);
+    const delta = this.timestamp - comparable.timestamp;
+
+    switch (normalized) {
+      case 'millisecond':
+        return this.roundDiff(delta, asFloat);
+      case 'second':
+        return this.roundDiff(delta / MS_PER_SECOND, asFloat);
+      case 'minute':
+        return this.roundDiff(delta / MS_PER_MINUTE, asFloat);
+      case 'hour':
+        return this.roundDiff(delta / MS_PER_HOUR, asFloat);
+      case 'day':
+        return this.roundDiff(delta / MS_PER_DAY, asFloat);
+      case 'week':
+        return this.roundDiff(delta / MS_PER_WEEK, asFloat);
+      case 'month': {
+        const months = this.diffInMonths(comparable, true);
+        return this.roundDiff(months, asFloat);
+      }
+      case 'year': {
+        const years = this.diffInMonths(comparable, true) / 12;
+        return this.roundDiff(years, asFloat);
+      }
+      default:
+        return this.roundDiff(delta, asFloat);
+    }
+  }
+
+  /**
+   * Moves the instance to the start of the provided unit (Moment-style).
+   * @param unit - The time unit to reset to its lower bound.
+   */
+  startOf(unit: DateTzGranularity) {
+    const granularity = this.normalizeGranularity(unit);
+    switch (granularity) {
+      case 'minute':
+        this.setLocalComponents({ second: 0 });
+        break;
+      case 'hour':
+        this.setLocalComponents({ minute: 0, second: 0 });
+        break;
+      case 'day':
+        this.setLocalComponents({ hour: 0, minute: 0, second: 0 });
+        break;
+      case 'week': {
+        this.startOf('day');
+        const dayOfWeek = this.dayOfWeek;
+        if (dayOfWeek !== 0) {
+          this.shift('day', -dayOfWeek);
+          this.startOf('day');
+        }
+        break;
+      }
+      case 'month':
+        this.setLocalComponents({ day: 1, hour: 0, minute: 0, second: 0 });
+        break;
+      case 'year':
+        this.setLocalComponents({ month: 0, day: 1, hour: 0, minute: 0, second: 0 });
+        break;
+    }
+    return this;
+  }
+
+  /**
+   * Moves the instance to the end of the provided unit (Moment-style).
+   * @param unit - The time unit to advance to its upper bound.
+   */
+  endOf(unit: DateTzGranularity) {
+    const granularity = this.normalizeGranularity(unit);
+    switch (granularity) {
+      case 'minute':
+        return this;
+      case 'hour':
+        this.startOf('hour');
+        this.shift('hour', 1);
+        this.shift('minute', -1);
+        break;
+      case 'day':
+        this.startOf('day');
+        this.shift('day', 1);
+        this.shift('minute', -1);
+        break;
+      case 'week':
+        this.startOf('week');
+        this.shift('week', 1);
+        this.shift('minute', -1);
+        break;
+      case 'month':
+        this.startOf('month');
+        this.shift('month', 1);
+        this.shift('minute', -1);
+        break;
+      case 'year':
+        this.startOf('year');
+        this.shift('year', 1);
+        this.shift('minute', -1);
+        break;
+    }
+    return this;
+  }
+
+  /**
+   * Creates a shallow clone of the instance.
+   */
+  clone(): DateTz {
+    return new DateTz(this);
+  }
+
+  /**
+   * Returns the underlying timestamp as a JavaScript Date instance.
+   */
+  toJSDate(): Date {
+    return new Date(this.timestamp);
+  }
+
+  /**
+   * Returns an ISO 8601 string (UTC, minute precision).
+   */
+  toISOString(): string {
+    return this.toJSDate().toISOString();
+  }
+
+  /**
+   * Synonym for toISOString (Luxon compatibility).
+   */
+  toISO(): string {
+    return this.toISOString();
+  }
+
+  /**
+   * Returns the Unix timestamp in seconds.
+   */
+  toUnix(): number {
+    return Math.floor(this.timestamp / 1000);
+  }
+
+  /**
+   * Returns the primitive value of the instance (ms since epoch).
+   */
+  valueOf(): number {
+    return this.timestamp;
+  }
+
+  /**
+   * Checks if this instance occurs before another when rounded to the given unit.
+   */
+  isBefore(other: IDateTz, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    return this.compareWithUnit(other, unit) < 0;
+  }
+
+  /**
+   * Checks if this instance occurs after another when rounded to the given unit.
+   */
+  isAfter(other: IDateTz, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    return this.compareWithUnit(other, unit) > 0;
+  }
+
+  /**
+   * Checks if two instances are the same when rounded to the given unit.
+   */
+  isSame(other: IDateTz, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    return this.compareWithUnit(other, unit) === 0;
+  }
+
+  /**
+   * Checks if this instance is the same or before another when rounded to the given unit.
+   */
+  isSameOrBefore(other: IDateTz, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    return this.compareWithUnit(other, unit) <= 0;
+  }
+
+  /**
+   * Checks if this instance is the same or after another when rounded to the given unit.
+   */
+  isSameOrAfter(other: IDateTz, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    return this.compareWithUnit(other, unit) >= 0;
+  }
+
+  /**
+   * Checks if this instance lies within a range.
+   * @param start - Start of the range.
+   * @param end - End of the range.
+   * @param unit - Comparison unit.
+   * @param inclusivity - Inclusivity string ((), (], [), []).
+   */
+  isBetween(
+    start: IDateTz,
+    end: IDateTz,
+    unit: DateTzDiffUnit = 'millisecond',
+    inclusivity: DateTzInclusivity = '()'
+  ): boolean {
+    if (inclusivity.length !== 2 || !['(', '['].includes(inclusivity[0]) || ![')', ']'].includes(inclusivity[1])) {
+      throw new Error(`Invalid inclusivity token: ${inclusivity}`);
+    }
+    const normalized = this.normalizeDiffUnit(unit);
+    const rangeStart = this.ensureComparable(start);
+    const rangeEnd = this.ensureComparable(end);
+    if (rangeStart.timestamp > rangeEnd.timestamp) {
+      throw new Error('Start date must be before end date');
+    }
+    const [lower, upper] = inclusivity.split('') as [string, string];
+    const lowerCmp = this.compareWithUnitDate(rangeStart, normalized);
+    const upperCmp = this.compareWithUnitDate(rangeEnd, normalized);
+    const lowerPass = lower === '(' ? lowerCmp > 0 : lowerCmp >= 0;
+    const upperPass = upper === ')' ? upperCmp < 0 : upperCmp <= 0;
+    return lowerPass && upperPass;
+  }
+
 
   private _year(considerDst = false) {
     const offset = this.getOffsetSeconds(considerDst) * 1000;
@@ -485,6 +792,180 @@ export class DateTz implements IDateTz {
     } catch {
       return null;
     }
+  }
+
+  private getLocalParts(considerDst = true): LocalParts {
+    return {
+      year: this._year(considerDst),
+      month: this._month(considerDst),
+      day: this._day(considerDst),
+      hour: this._hour(considerDst),
+      minute: this._minute(considerDst),
+      second: 0
+    };
+  }
+
+  private setLocalComponents(update: Partial<LocalParts>) {
+    const current = this.getLocalParts(true);
+    const next: LocalParts = {
+      ...current,
+      ...update
+    };
+    const pattern = 'YYYY-MM-DD HH:mm:ss';
+    const dateString = [
+      String(next.year).padStart(4, '0'),
+      String(next.month + 1).padStart(2, '0'),
+      String(next.day).padStart(2, '0')
+    ].join('-') + ' ' + [
+      String(next.hour).padStart(2, '0'),
+      String(next.minute).padStart(2, '0'),
+      String(next.second).padStart(2, '0')
+    ].join(':');
+    const parsed = DateTz.parse(dateString, pattern, this.timezone);
+    this.timestamp = parsed.timestamp;
+    this.invalidateOffsetCache();
+  }
+
+  private toDateInstance(other: IDateTz): DateTz {
+    if (other instanceof DateTz) {
+      return other;
+    }
+    const tz = other.timezone ?? this.timezone;
+    return new DateTz({ timestamp: other.timestamp, timezone: tz });
+  }
+
+  private ensureComparable(other: IDateTz): DateTz {
+    const instance = this.toDateInstance(other);
+    if (!this.isComparable(instance)) {
+      throw new Error('Cannot compare dates with different timezones');
+    }
+    return instance;
+  }
+
+  private normalizeDiffUnit(unit?: string): DateTzDiffUnit {
+    if (!unit) {
+      return 'millisecond';
+    }
+    const normalized = UNIT_ALIASES[unit.toLowerCase()];
+    if (!normalized) {
+      throw new Error(`Unsupported unit: ${unit}`);
+    }
+    return normalized;
+  }
+
+  private normalizeGranularity(unit: string): DateTzGranularity {
+    const normalized = this.normalizeDiffUnit(unit);
+    if (normalized === 'millisecond' || normalized === 'second') {
+      throw new Error(`Unsupported granularity: ${unit}`);
+    }
+    return normalized as DateTzGranularity;
+  }
+
+  private diffInMonths(other: DateTz, asFloat: boolean): number {
+    const earlier = this.timestamp < other.timestamp ? new DateTz(this) : new DateTz(other);
+    const later = this.timestamp < other.timestamp ? new DateTz(other) : new DateTz(this);
+    let anchor = new DateTz(earlier);
+    let months = 0;
+    let next = new DateTz(anchor).add(1, 'month');
+    while (next.timestamp <= later.timestamp) {
+      anchor = next;
+      months++;
+      next = new DateTz(anchor).add(1, 'month');
+    }
+
+    if (!asFloat) {
+      return this.timestamp < other.timestamp ? -months : months;
+    }
+
+    const spanStart = anchor.timestamp;
+    const spanEnd = next.timestamp;
+    const span = spanEnd - spanStart;
+    const remainder = later.timestamp - spanStart;
+    const fractional = span !== 0 ? remainder / span : 0;
+    const value = months + fractional;
+    return this.timestamp < other.timestamp ? -value : value;
+  }
+
+  private roundDiff(value: number, asFloat: boolean): number {
+    if (asFloat) {
+      return value;
+    }
+    return value < 0 ? Math.ceil(value) : Math.floor(value);
+  }
+
+  private compareWithUnitDate(other: DateTz, unit: DateTzDiffUnit): number {
+    const normalized = this.normalizeDiffUnit(unit);
+    if (normalized === 'millisecond' || normalized === 'second') {
+      return this.timestamp - other.timestamp;
+    }
+    const granularity = normalized as DateTzGranularity;
+    const left = this.clone().startOf(granularity);
+    const right = other.clone().startOf(granularity);
+    return left.timestamp - right.timestamp;
+  }
+
+  private compareWithUnit(other: IDateTz, unit: DateTzDiffUnit): number {
+    const instance = this.ensureComparable(other);
+    return this.compareWithUnitDate(instance, unit);
+  }
+
+  private shift(unit: DateTzDiffUnit, value: number) {
+    if (value === 0) {
+      return this;
+    }
+    switch (unit) {
+      case 'minute':
+        this.timestamp += value * MS_PER_MINUTE;
+        break;
+      case 'hour':
+        this.timestamp += value * MS_PER_HOUR;
+        break;
+      case 'day':
+        this.timestamp += value * MS_PER_DAY;
+        break;
+      case 'week':
+        this.timestamp += value * MS_PER_WEEK;
+        break;
+      case 'month':
+        this.shiftCalendar('month', value);
+        return this;
+      case 'year':
+        this.shiftCalendar('year', value);
+        return this;
+      default:
+        throw new Error(`Unsupported unit: ${unit}`);
+    }
+    this.invalidateOffsetCache();
+    return this;
+  }
+
+  private shiftCalendar(unit: 'month' | 'year', value: number) {
+    if (value === 0) {
+      return;
+    }
+    const current = this.getLocalParts(true);
+    let year = current.year;
+    let month = current.month;
+    let day = current.day;
+
+    if (unit === 'year') {
+      year += value;
+    } else {
+      let totalMonths = year * 12 + month + value;
+      year = Math.floor(totalMonths / 12);
+      month = totalMonths % 12;
+      if (month < 0) {
+        month += 12;
+        year -= 1;
+      }
+    }
+
+    const maxDay = month === 1 && this.isLeapYear(year) ? 29 : daysPerMonth[month];
+    if (day > maxDay) {
+      day = maxDay;
+    }
+
+    this.setLocalComponents({ year, month, day });
   }
 
   /**
