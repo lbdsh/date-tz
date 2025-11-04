@@ -199,6 +199,88 @@ describe('DateTz', () => {
     expect(() => dateTz.cloneToTimezone('Mars/Phobos')).toThrow('Invalid timezone: Mars/Phobos');
   });
 
+  it('subtracts time using calendar and fixed units', () => {
+    const dateTz = new DateTz(Date.UTC(2021, 2, 15, 12, 0), 'UTC');
+    dateTz.subtract(1, 'day');
+    expect(dateTz.toString()).toBe('2021-03-14 12:00:00');
+    dateTz.subtract(1, 'month');
+    expect(dateTz.toString()).toBe('2021-02-14 12:00:00');
+    dateTz.subtract(1, 'year');
+    expect(dateTz.toString()).toBe('2020-02-14 12:00:00');
+  });
+
+  it('supports plus/minus duration helpers', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    dateTz.plus({ days: 2, hours: 3, minutes: 15 });
+    expect(dateTz.toString()).toBe('2021-01-03 03:15:00');
+    dateTz.minus({ weeks: 1 });
+    expect(dateTz.toString()).toBe('2020-12-27 03:15:00');
+  });
+
+  it('computes differences across granularities', () => {
+    const start = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const end = new DateTz(Date.UTC(2021, 0, 3, 3, 0), 'UTC');
+    expect(end.diff(start, 'minute')).toBe(3060); // 2 days 3 hours
+    expect(end.diff(start, 'hour')).toBe(51);
+    expect(end.diff(start, 'day', true)).toBeCloseTo(2.125, 6);
+    const march = new DateTz(Date.UTC(2021, 2, 1, 0, 0), 'UTC');
+    expect(march.diff(start, 'month')).toBe(2);
+    expect(march.diff(start, 'year', true)).toBeCloseTo(0.1667, 4);
+  });
+
+  it('throws when diffing across timezones', () => {
+    const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    expect(() => utc.diff(rome)).toThrow('Cannot compare dates with different timezones');
+  });
+
+  it('moves to start and end boundaries', () => {
+    const dateTz = new DateTz(Date.UTC(2021, 5, 16, 10, 45), 'UTC');
+    dateTz.startOf('day');
+    expect(dateTz.toString()).toBe('2021-06-16 00:00:00');
+    dateTz.endOf('day');
+    expect(dateTz.toString()).toBe('2021-06-16 23:59:00');
+    dateTz.startOf('week');
+    expect(dateTz.toString()).toBe('2021-06-13 00:00:00');
+  });
+
+  it('creates independent clones', () => {
+    const original = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const clone = original.clone();
+    clone.plus({ day: 1 });
+    expect(original.toString()).toBe('2021-01-01 00:00:00');
+    expect(clone.toString()).toBe('2021-01-02 00:00:00');
+  });
+
+  it('exposes conversion helpers', () => {
+    const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
+    expect(dateTz.valueOf()).toBe(BASE_TIMESTAMP);
+    expect(dateTz.toUnix()).toBe(BASE_TIMESTAMP / 1000);
+    expect(dateTz.toJSDate().getTime()).toBe(BASE_TIMESTAMP);
+    expect(dateTz.toISO()).toBe(new Date(BASE_TIMESTAMP).toISOString());
+    expect(dateTz.toISOString()).toBe(dateTz.toISO());
+  });
+
+  it('provides comparison helpers', () => {
+    const first = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const second = new DateTz(Date.UTC(2021, 0, 1, 0, 30), 'UTC');
+    expect(first.isBefore(second)).toBe(true);
+    expect(second.isAfter(first, 'hour')).toBe(false);
+    expect(second.isSame(first, 'hour')).toBe(true);
+    expect(second.isSameOrAfter(first)).toBe(true);
+    expect(first.isSameOrBefore(second)).toBe(true);
+  });
+
+  it('checks ranges with isBetween', () => {
+    const start = new DateTz(BASE_TIMESTAMP, 'UTC');
+    const middle = new DateTz(Date.UTC(2021, 0, 1, 12, 0), 'UTC');
+    const end = new DateTz(Date.UTC(2021, 0, 2, 0, 0), 'UTC');
+    expect(middle.isBetween(start, end)).toBe(true);
+    expect(middle.isBetween(start, end, 'day', '[]')).toBe(true);
+    expect(start.isBetween(start, end, 'minute', '()')).toBe(false);
+    expect(start.isBetween(start, end, 'minute', '[]')).toBe(true);
+  });
+
   it('rejects conversion to plain offsets by id mismatch', () => {
     const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
     expect(() => dateTz.convertToTimezone('GMT+1')).toThrow('Invalid timezone: GMT+1');

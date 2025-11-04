@@ -83,8 +83,9 @@ DateTz ships as CommonJS with TypeScript declarations. No runtime dependencies, 
 | `DateTz.parse(str, pattern?, tz?)` | Parse formatted strings into `DateTz` instances. |
 | `DateTz.defaultFormat` | Default pattern used by `toString()` when no arguments are provided. |
 | Getters | `year`, `month`, `day`, `hour`, `minute`, `dayOfWeek`, `isDst`, `timezoneOffset`. |
-| Mutators | `add(value, unit)`, `set(value, unit)`, `convertToTimezone(tz)` (mutating), `cloneToTimezone(tz)` (immutable). |
-| Comparison | `compare(other)`, `isComparable(other)` guard against cross-zone mistakes. |
+| Mutators | `add(value, unit)`, `subtract(value, unit)`, `plus(duration)`, `minus(duration)`, `startOf(unit)`, `endOf(unit)`, `set(value, unit)`, `convertToTimezone(tz)` (mutating), `cloneToTimezone(tz)` (immutable). |
+| Comparison | `compare(other)`, `diff(other, unit?, asFloat?)`, `isBefore(other, unit?)`, `isAfter(other, unit?)`, `isSame(other, unit?)`, `isSameOrBefore(other, unit?)`, `isSameOrAfter(other, unit?)`, `isBetween(start, end, unit?, inclusivity?)`. |
+| Convenience | `clone()`, `toJSDate()`, `toISOString()`, `toISO()`, `toUnix()`, `valueOf()`. |
 
 ---
 
@@ -152,6 +153,8 @@ Parsing throws on invalid zones or incompatible patterns (e.g. `hh` without `aa`
 
 ### Arithmetic Cookbook
 
+The `add`, `subtract`, `plus`, and `minus` helpers stay DST-safe and respect calendar rollovers.
+
 ```ts
 const sprint = new DateTz(Date.UTC(2025, 1, 1, 9, 0), 'Europe/Amsterdam');
 
@@ -159,13 +162,21 @@ sprint.add(14, 'day'); // Compose to simulate weeks
 sprint.set(sprint.month + 1, 'month').set(1, 'day'); // First day of next month
 while ([0, 6].includes(sprint.dayOfWeek)) sprint.add(1, 'day'); // Skip weekend
 sprint.set(10, 'hour').set(0, 'minute'); // Move to 10:00
+const reminder = sprint.clone().subtract(1, 'day').set(17, 'hour'); // 24h reminder
+
+const launch = DateTz.parse('2025-07-01 08:30', 'YYYY-MM-DD HH:mm', 'UTC')
+  .plus({ weeks: 2, hours: 4 })
+  .minus({ days: 1 });
+
+launch.startOf('day'); // snap to midnight
+launch.endOf('day');   // advance to the end of the same day (23:59)
 ```
 
 ### Immutability Pattern
 
 ```ts
 const base = DateTz.now('UTC');
-const nextRun = new DateTz(base).add(1, 'day');
+const nextRun = base.clone().add(1, 'day');
 ```
 
 Mutators change the instance; use cloning when you need persistence.
@@ -189,6 +200,45 @@ const rome = DateTz.now('Europe/Rome');
 const ny = DateTz.now('America/New_York');
 
 if (!rome.isComparable(ny)) ny.convertToTimezone(rome.timezone);
+```
+
+### Differences & Ranges
+
+Moment/Luxon-style comparison helpers make it simple to reason about relative ordering with optional rounding units and inclusive/exclusive bounds.
+
+```ts
+const start = DateTz.parse('2025-06-10 08:00', 'YYYY-MM-DD HH:mm', 'Europe/Rome');
+const end = DateTz.parse('2025-06-12 11:30', 'YYYY-MM-DD HH:mm', 'Europe/Rome');
+
+start.diff(end);                 // -183000000 (milliseconds)
+start.diff(end, 'hour');         // -51
+start.diff(end, 'day', true);    // -2.145833...
+
+start.isBefore(end);             // true
+end.isAfter(start, 'hour');      // true
+start.isSame(end, 'day');        // false
+start.isSameOrBefore(end);       // true
+start.isSameOrAfter(end);        // false
+start.isBetween(
+  DateTz.parse('2025-06-09 00:00', 'YYYY-MM-DD HH:mm', 'Europe/Rome'),
+  DateTz.parse('2025-06-15 23:59', 'YYYY-MM-DD HH:mm', 'Europe/Rome'),
+  'day',
+  '[]'
+); // true, inclusive
+```
+
+### Interop Helpers
+
+Bridge to native JavaScript types or serialisation formats without losing your timezone context.
+
+```ts
+const report = DateTz.parse('2025-11-05 17:45', 'YYYY-MM-DD HH:mm', 'Europe/Paris');
+
+report.toJSDate();   // Native Date
+report.toISO();      // "2025-11-05T16:45:00.000Z"
+report.toISOString();// Same value, alias for toISO()
+report.toUnix();     // 1751733900
+report.valueOf();    // 1751733900000
 ```
 
 ---
