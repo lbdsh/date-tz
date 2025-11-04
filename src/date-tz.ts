@@ -831,7 +831,7 @@ export class DateTz implements IDateTz {
       return other;
     }
     const tz = other.timezone ?? this.timezone;
-    return new DateTz({ timestamp: other.timestamp, timezone: tz });
+    return new DateTz(other.timestamp, tz);
   }
 
   private ensureComparable(other: IDateTz): DateTz {
