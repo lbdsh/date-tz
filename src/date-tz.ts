@@ -139,9 +139,29 @@ export class DateTz implements IDateTz {
  * @returns The formatted date string.
  */
   toString(): string;
-  toString(pattern: string): string;
-  toString(pattern?: string, locale?: string): string {
-    if (!pattern) pattern = 'YYYY-MM-DD HH:mm:ss';
+  toString(locale: string): string;
+  toString(pattern: string, locale?: string): string;
+  toString(patternOrLocale?: string, maybeLocale?: string): string {
+    const tokenRegex = /(YYYY|yyyy|YY|yy|MM|LM|DD|HH|hh|mm|ss|aa|AA|tz)/;
+    let pattern = DateTz.defaultFormat;
+    let locale = 'en';
+    const hasLocaleArgument = typeof maybeLocale === 'string' && maybeLocale.length > 0;
+
+    if (hasLocaleArgument) {
+      locale = maybeLocale as string;
+    }
+
+    if (typeof patternOrLocale === 'string' && patternOrLocale.length > 0) {
+      if (hasLocaleArgument || tokenRegex.test(patternOrLocale)) {
+        pattern = patternOrLocale;
+      } else if (this.isLikelyLocale(patternOrLocale)) {
+        locale = patternOrLocale;
+      } else {
+        pattern = patternOrLocale;
+      }
+    } else if (patternOrLocale === undefined && hasLocaleArgument) {
+      pattern = DateTz.defaultFormat;
+    }
 
     // Calculate year, month, day, hours, minutes, seconds
     const offsetInfo = this.getOffsetInfo();
@@ -194,8 +214,7 @@ export class DateTz implements IDateTz {
     const pm = hour >= 12 ? 'PM' : 'AM';
     const hour12 = hour % 12 || 12; // Convert to 12-hour format
 
-    if (!locale) locale = 'en';
-    let monthStr = new Date(year, month, 3).toLocaleString(locale || 'en', { month: 'long' });
+    let monthStr = new Date(year, month, 3).toLocaleString(locale, { month: 'long' });
     monthStr = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
 
     // Map components to pattern tokens
@@ -716,6 +735,14 @@ export class DateTz implements IDateTz {
 
     // Reconstruct the timestamp without seconds and milliseconds
     return days * MS_PER_DAY + hours * MS_PER_HOUR + minutes * MS_PER_MINUTE;
+  }
+
+  private isLikelyLocale(candidate: string): boolean {
+    try {
+      return Intl.getCanonicalLocales(candidate).length > 0;
+    } catch {
+      return false;
+    }
   }
 
   private invalidateOffsetCache() {

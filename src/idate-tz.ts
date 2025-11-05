@@ -35,9 +35,7 @@ export interface IDateTz {
   readonly timezoneOffset?: TimezoneOffset;
   compare?(other: IDateTz): number;
   isComparable?(other: IDateTz): boolean;
-  toString?(): string;
-  toString?(pattern: string): string;
-  toString?(pattern: string, locale?: string): string;
+  toString?(pattern?: string, locale?: string): string;
   add?(value: number, unit: 'minute' | 'hour' | 'day' | 'month' | 'year'): IDateTz;
   subtract?(value: number, unit: 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year'): IDateTz;
   plus?(duration: DateTzDurationLike): IDateTz;
