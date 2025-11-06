@@ -1346,6 +1346,110 @@ export class DateTz implements IDateTz {
     return candidate;
   }
 
+  /**
+   * Compares two DateTz-like values without manual instantiation.
+   */
+  static compare(left: unknown, right: unknown): number {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.compare(second);
+  }
+
+  /**
+   * Computes the difference between two DateTz-like values.
+   */
+  static diff(
+    left: unknown,
+    right: unknown,
+    unit: DateTzDiffUnit = 'millisecond',
+    asFloat = false
+  ): number {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.diff(second, unit, asFloat);
+  }
+
+  /**
+   * Checks if the left value occurs before the right value.
+   */
+  static isBefore(left: unknown, right: unknown, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.isBefore(second, unit);
+  }
+
+  /**
+   * Checks if the left value occurs after the right value.
+   */
+  static isAfter(left: unknown, right: unknown, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.isAfter(second, unit);
+  }
+
+  /**
+   * Checks if the left value is the same as the right value for the provided unit.
+   */
+  static isSame(left: unknown, right: unknown, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.isSame(second, unit);
+  }
+
+  /**
+   * Checks if the left value is before or equal to the right value for the provided unit.
+   */
+  static isSameOrBefore(left: unknown, right: unknown, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.isSameOrBefore(second, unit);
+  }
+
+  /**
+   * Checks if the left value is after or equal to the right value for the provided unit.
+   */
+  static isSameOrAfter(left: unknown, right: unknown, unit: DateTzDiffUnit = 'millisecond'): boolean {
+    const first = DateTz.coerce(left);
+    const second = DateTz.coerce(right, first.timezone);
+    return first.isSameOrAfter(second, unit);
+  }
+
+  /**
+   * Checks if the value lies between start and end.
+   */
+  static isBetween(
+    value: unknown,
+    start: unknown,
+    end: unknown,
+    unit: DateTzDiffUnit = 'millisecond',
+    inclusivity: DateTzInclusivity = '()'
+  ): boolean {
+    const target = DateTz.coerce(value);
+    const startInstance = DateTz.coerce(start, target.timezone);
+    const endInstance = DateTz.coerce(end, target.timezone);
+    return target.isBetween(startInstance, endInstance, unit, inclusivity);
+  }
+
+  private static coerce(value: unknown, fallbackTz?: string): DateTz {
+    if (value instanceof DateTz) {
+      return value;
+    }
+    if (DateTz.isSerialized(value)) {
+      return new DateTz(value);
+    }
+    if (value && typeof value === 'object') {
+      const candidate = value as Partial<IDateTz>;
+      if (typeof candidate.timestamp === 'number') {
+        const tz = typeof candidate.timezone === 'string' ? candidate.timezone : fallbackTz ?? 'UTC';
+        return new DateTz({ timestamp: candidate.timestamp, timezone: tz });
+      }
+    }
+    if (typeof value === 'number') {
+      return new DateTz(value, fallbackTz);
+    }
+    throw new Error('Unable to coerce value into a DateTz instance');
+  }
+
   get isDst(): boolean {
     return this.getOffsetInfo().isDst;
   }

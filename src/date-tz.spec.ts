@@ -192,6 +192,25 @@ describe('DateTz', () => {
     expect(hydrated.toString()).toBe('2021-01-01 00:00:00');
   });
 
+  it('compares serialized payloads without instantiation', () => {
+    const earlier = { timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' };
+    const later = { timestamp: BASE_TIMESTAMP + 3_600_000, timezone: 'Europe/Rome' };
+    expect(DateTz.compare(earlier, later)).toBeLessThan(0);
+    expect(DateTz.diff(earlier, later, 'hour')).toBe(-1);
+    expect(DateTz.isBefore(earlier, later)).toBe(true);
+    expect(DateTz.isAfter(later, earlier)).toBe(true);
+    expect(DateTz.isSame(earlier, later, 'day')).toBe(true);
+    expect(DateTz.isSameOrBefore(earlier, later, 'hour')).toBe(true);
+    expect(DateTz.isSameOrAfter(later, earlier, 'hour')).toBe(true);
+    expect(DateTz.isBetween(
+      { timestamp: BASE_TIMESTAMP + 1_800_000, timezone: 'Europe/Rome' },
+      earlier,
+      later,
+      'hour',
+      '[]'
+    )).toBe(true);
+  });
+
   it('reports comparability correctly', () => {
     const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
     const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
