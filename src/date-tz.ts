@@ -1,4 +1,4 @@
-import { DateTzDiffUnit, DateTzDurationLike, DateTzGranularity, DateTzInclusivity, IDateTz } from "./idate-tz";
+import { DateTzDiffUnit, DateTzDurationLike, DateTzGranularity, DateTzInclusivity, DateTzSerialized, IDateTz } from "./idate-tz";
 import { TimezoneOffset, timezones } from "./timezones";
 
 const MS_PER_SECOND = 1000;
@@ -540,28 +540,28 @@ export class DateTz implements IDateTz {
   /**
    * Returns a plain object representation suitable for serialization.
    */
-  toObject(): IDateTz {
+  toObject(): DateTzSerialized {
     return { timestamp: this.timestamp, timezone: this.timezone };
   }
 
   /**
    * Alias for toObject to support JSON serialization.
    */
-  toJSON(): IDateTz {
+  toJSON(): DateTzSerialized {
     return this.toObject();
   }
 
   /**
    * Alias for toObject to support MongoDB/BSON serialization.
    */
-  toBSON(): IDateTz {
+  toBSON(): DateTzSerialized {
     return this.toObject();
   }
 
   /**
    * Returns the primitive value of the instance (timezone-aware payload).
    */
-  valueOf(): IDateTz {
+  valueOf(): DateTzSerialized {
     return this.toObject();
   }
 

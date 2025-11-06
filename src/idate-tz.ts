@@ -1,5 +1,10 @@
 import { TimezoneOffset } from "./timezones";
 
+export type DateTzSerialized = {
+  timestamp: number;
+  timezone: string;
+};
+
 export type DateTzDiffUnit =
   | 'millisecond'
   | 'second'
@@ -51,10 +56,10 @@ export interface IDateTz {
   toISOString?(): string;
   toISO?(): string;
   toUnix?(): number;
-  toObject?(): IDateTz;
-  toJSON?(): IDateTz;
-  toBSON?(): IDateTz;
-  valueOf?(): number | IDateTz;
+  toObject?(): DateTzSerialized;
+  toJSON?(): DateTzSerialized;
+  toBSON?(): DateTzSerialized;
+  valueOf?(): number | DateTzSerialized;
   isBefore?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isAfter?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isSame?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
