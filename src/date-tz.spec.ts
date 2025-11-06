@@ -177,6 +177,21 @@ describe('DateTz', () => {
     expect(hydrated.timestamp).toBe(BASE_TIMESTAMP);
   });
 
+  it('hydrates plain objects in place', () => {
+    const payload = { timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' };
+    const hydrated = DateTz.hydrate(payload);
+    expect(hydrated).toBe(payload);
+    expect(hydrated).toBeInstanceOf(DateTz);
+    expect(hydrated.toString()).toBe('2021-01-01 01:00:00');
+  });
+
+  it('hydrates using fallback timezone', () => {
+    const payload = { timestamp: BASE_TIMESTAMP };
+    const hydrated = DateTz.hydrate(payload, 'UTC');
+    expect(hydrated.timezone).toBe('UTC');
+    expect(hydrated.toString()).toBe('2021-01-01 00:00:00');
+  });
+
   it('reports comparability correctly', () => {
     const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
     const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');

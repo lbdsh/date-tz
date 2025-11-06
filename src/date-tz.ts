@@ -1314,6 +1314,38 @@ export class DateTz implements IDateTz {
     throw new Error('Unable to coerce value into a DateTz instance');
   }
 
+  /**
+   * Mutates a plain object so that it behaves like a DateTz instance.
+   * Useful when hydrating records from external sources (e.g. MongoDB).
+   */
+  static hydrate<T extends { timestamp: number; timezone?: string; [key: string]: unknown; }>(
+    value: T,
+    tz?: string
+  ): T & DateTz;
+  static hydrate(value: null | undefined, tz?: string): null | undefined;
+  static hydrate(value: { timestamp: number; timezone?: string; [key: string]: unknown; } | null | undefined, tz?: string) {
+    if (value === null || value === undefined) {
+      return value;
+    }
+    if (value instanceof DateTz) {
+      return value;
+    }
+    if (typeof value !== 'object') {
+      throw new Error('DateTz.hydrate expects an object with a timestamp property');
+    }
+    const candidate = value as { timestamp: unknown; timezone?: unknown; [key: string]: unknown; };
+    if (typeof candidate.timestamp !== 'number') {
+      throw new Error('DateTz.hydrate requires a numeric timestamp');
+    }
+    const timezone = typeof candidate.timezone === 'string' ? candidate.timezone : tz ?? 'UTC';
+    const instance = new DateTz(candidate.timestamp, timezone);
+    Object.setPrototypeOf(candidate, DateTz.prototype);
+    candidate.timestamp = instance.timestamp;
+    candidate.timezone = instance.timezone;
+    (candidate as Record<string, unknown>).offsetCache = undefined;
+    return candidate;
+  }
+
   get isDst(): boolean {
     return this.getOffsetInfo().isDst;
   }
