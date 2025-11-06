@@ -73,7 +73,7 @@ export class DateTz implements IDateTz {
   /**
    * Cache for the most recently resolved timezone offset.
    */
-  private offsetCache?: { timestamp: number; info: { offsetSeconds: number; isDst: boolean; }; };
+  private declare offsetCache?: { timestamp: number; info: { offsetSeconds: number; isDst: boolean; }; };
 
   /**
    * The default date format used when converting to string.
@@ -88,6 +88,13 @@ export class DateTz implements IDateTz {
   constructor(value: IDateTz);
   constructor(value: number, tz?: string);
   constructor(value: number | IDateTz, tz?: string) {
+    Object.defineProperty(this, 'offsetCache', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+      enumerable: false
+    });
+
     if (typeof value === 'object') {
       this.timestamp = value.timestamp;
       this.timezone = value.timezone || 'UTC';
