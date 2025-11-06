@@ -1342,7 +1342,6 @@ export class DateTz implements IDateTz {
     Object.setPrototypeOf(candidate, DateTz.prototype);
     candidate.timestamp = instance.timestamp;
     candidate.timezone = instance.timezone;
-    (candidate as Record<string, unknown>).offsetCache = undefined;
     return candidate;
   }
 
