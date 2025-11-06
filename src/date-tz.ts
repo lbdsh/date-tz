@@ -73,7 +73,7 @@ export class DateTz implements IDateTz {
   /**
    * Cache for the most recently resolved timezone offset.
    */
-  private offsetCache?: { timestamp: number; info: { offsetSeconds: number; isDst: boolean; }; };
+  #offsetCache?: { timestamp: number; info: { offsetSeconds: number; isDst: boolean; }; };
 
   /**
    * The default date format used when converting to string.
@@ -746,7 +746,7 @@ export class DateTz implements IDateTz {
   }
 
   private invalidateOffsetCache() {
-    this.offsetCache = undefined;
+    this.#offsetCache = undefined;
   }
 
   private getOffsetSeconds(considerDst: boolean): number {
@@ -761,11 +761,11 @@ export class DateTz implements IDateTz {
   }
 
   private getOffsetInfo(): { offsetSeconds: number; isDst: boolean; } {
-    if (this.offsetCache && this.offsetCache.timestamp === this.timestamp) {
-      return this.offsetCache.info;
+    if (this.#offsetCache && this.#offsetCache.timestamp === this.timestamp) {
+      return this.#offsetCache.info;
     }
     const info = this.computeOffsetInfo();
-    this.offsetCache = { timestamp: this.timestamp, info };
+    this.#offsetCache = { timestamp: this.timestamp, info };
     return info;
   }
 

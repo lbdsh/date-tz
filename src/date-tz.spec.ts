@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { IDateTz } from './idate-tz';
 import { DateTz } from './date-tz';
+import { IDateTz } from './idate-tz';
 
 const BASE_TIMESTAMP = Date.UTC(2021, 0, 1, 0, 0); // 2021-01-01 00:00 UTC
 
@@ -64,6 +64,11 @@ describe('DateTz', () => {
     expect(dateTz.toString('LM DD, YYYY hh:mm aa')).toBe('January 01, 2021 12:00 am');
   });
 
+  it('formats Rome date with locale month name and timezone', () => {
+    const rome = new DateTz(Date.UTC(2025, 5, 15, 7, 30), 'Europe/Rome');
+    expect(rome.toString('DD LM YYYY HH:mm tz', 'en')).toBe('15 June 2025 09:30 Europe/Rome');
+  });
+
   it('retains chaining behaviour for add', () => {
     const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
     const result = dateTz.add(1, 'day');
@@ -101,25 +106,25 @@ describe('DateTz', () => {
   });
 
   it('parses a date string with a custom pattern', () => {
-    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'UTC');
+    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'UTC') as DateTz;
     expect(parsed.toString()).toBe('2021-01-05 18:30:00');
     expect(parsed.timezone).toBe('UTC');
   });
 
   it('parses using a non-UTC timezone', () => {
-    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'Europe/Rome');
+    const parsed = DateTz.parse('2021-01-05 18:30:00', 'YYYY-MM-DD HH:mm:ss', 'Europe/Rome') as DateTz;
     expect(parsed.timezone).toBe('Europe/Rome');
     expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-01-05 18:30 Europe/Rome');
   });
 
   it('parses the DST spring-forward gap by rolling forward to the first valid instant', () => {
-    const parsed = DateTz.parse('2021-03-14 02:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York');
+    const parsed = DateTz.parse('2021-03-14 02:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York') as DateTz;
     expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-03-14 03:30 America/New_York');
     expect(parsed.isDst).toBe(true);
   });
 
   it('prefers the DST occurrence when parsing ambiguous fall-back times', () => {
-    const parsed = DateTz.parse('2021-11-07 01:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York');
+    const parsed = DateTz.parse('2021-11-07 01:30:00', 'YYYY-MM-DD HH:mm:ss', 'America/New_York') as DateTz;
     expect(parsed.toString('YYYY-MM-DD HH:mm tz')).toBe('2021-11-07 01:30 America/New_York');
     expect(parsed.isDst).toBe(true);
   });
@@ -164,7 +169,7 @@ describe('DateTz', () => {
     const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
     expect(utc.isComparable(rome)).toBe(false);
     expect(utc.isComparable(new DateTz(BASE_TIMESTAMP, 'UTC'))).toBe(true);
-    const plain: IDateTz = { timestamp: BASE_TIMESTAMP, timezone: 'UTC' };
+    const plain: IDateTz = { timestamp: BASE_TIMESTAMP, timezone: 'UTC', valueOf: () => BASE_TIMESTAMP };
     expect(utc.isComparable(plain)).toBe(true);
   });
 
@@ -259,9 +264,9 @@ describe('DateTz', () => {
   it('creates independent clones', () => {
     const original = new DateTz(BASE_TIMESTAMP, 'UTC');
     const clone = original.clone();
-    clone.plus({ day: 1 });
+    (clone as DateTz).plus({ day: 1 });
     expect(original.toString()).toBe('2021-01-01 00:00:00');
-    expect(clone.toString()).toBe('2021-01-02 00:00:00');
+    expect((clone as DateTz).toString()).toBe('2021-01-02 00:00:00');
   });
 
   it('exposes conversion helpers', () => {
