@@ -505,7 +505,7 @@ export class DateTz implements IDateTz {
   /**
    * Creates a shallow clone of the instance.
    */
-  clone(): DateTz {
+  clone(): IDateTz {
     return new DateTz(this);
   }
 
@@ -1119,7 +1119,7 @@ export class DateTz implements IDateTz {
  * @param tz - The timezone identifier (optional).
  * @returns A new DateTz instance.
  */
-  static parse(dateString: string, pattern?: string, tz?: string): DateTz {
+  static parse(dateString: string, pattern?: string, tz?: string): IDateTz {
     if (!pattern) pattern = DateTz.defaultFormat;
     if (!tz) tz = 'UTC';
     if (!timezones[tz]) {
@@ -1237,7 +1237,7 @@ export class DateTz implements IDateTz {
    * @param tz - The timezone identifier (optional). Defaults to 'UTC'.
    * @returns A new DateTz instance representing the current date and time.
    */
-  static now(tz?: string): DateTz {
+  static now(tz?: string): IDateTz {
     if (!tz) tz = 'UTC';
     const timezone = timezones[tz];
     if (!timezone) {
