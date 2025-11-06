@@ -51,7 +51,10 @@ export interface IDateTz {
   toISOString?(): string;
   toISO?(): string;
   toUnix?(): number;
-  valueOf?(): number;
+  toObject?(): IDateTz;
+  toJSON?(): IDateTz;
+  toBSON?(): IDateTz;
+  valueOf?(): number | IDateTz;
   isBefore?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isAfter?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isSame?(other: IDateTz, unit?: DateTzDiffUnit): boolean;

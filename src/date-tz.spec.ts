@@ -159,6 +159,15 @@ describe('DateTz', () => {
     expect(la.timezoneOffset).toEqual({ sdt: -28800, dst: -25200 });
   });
 
+  it('preserves timezone information during implicit serialization', () => {
+    const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
+    const plain = { timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' };
+    expect(rome.toObject()).toEqual(plain);
+    expect(rome.toJSON()).toEqual(plain);
+    expect(rome.valueOf()).toEqual(plain);
+    expect(Number(rome)).toBe(BASE_TIMESTAMP);
+  });
+
   it('reports comparability correctly', () => {
     const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
     const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');
@@ -266,7 +275,8 @@ describe('DateTz', () => {
 
   it('exposes conversion helpers', () => {
     const dateTz = new DateTz(BASE_TIMESTAMP, 'UTC');
-    expect(dateTz.valueOf()).toBe(BASE_TIMESTAMP);
+    expect(dateTz.valueOf()).toEqual({ timestamp: BASE_TIMESTAMP, timezone: 'UTC' });
+    expect(Number(dateTz)).toBe(BASE_TIMESTAMP);
     expect(dateTz.toUnix()).toBe(BASE_TIMESTAMP / 1000);
     expect(dateTz.toJSDate().getTime()).toBe(BASE_TIMESTAMP);
     expect(dateTz.toISO()).toBe(new Date(BASE_TIMESTAMP).toISOString());

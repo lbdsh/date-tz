@@ -538,10 +538,41 @@ export class DateTz implements IDateTz {
   }
 
   /**
-   * Returns the primitive value of the instance (ms since epoch).
+   * Returns a plain object representation suitable for serialization.
    */
-  valueOf(): number {
-    return this.timestamp;
+  toObject(): IDateTz {
+    return { timestamp: this.timestamp, timezone: this.timezone };
+  }
+
+  /**
+   * Alias for toObject to support JSON serialization.
+   */
+  toJSON(): IDateTz {
+    return this.toObject();
+  }
+
+  /**
+   * Alias for toObject to support MongoDB/BSON serialization.
+   */
+  toBSON(): IDateTz {
+    return this.toObject();
+  }
+
+  /**
+   * Returns the primitive value of the instance (timezone-aware payload).
+   */
+  valueOf(): IDateTz {
+    return this.toObject();
+  }
+
+  /**
+   * Controls how the instance is coerced to primitive types.
+   */
+  [Symbol.toPrimitive](hint: string) {
+    if (hint === 'number' || hint === 'default') {
+      return this.timestamp;
+    }
+    return this.toString();
   }
 
   /**
