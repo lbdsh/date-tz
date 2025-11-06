@@ -168,6 +168,15 @@ describe('DateTz', () => {
     expect(Number(rome)).toBe(BASE_TIMESTAMP);
   });
 
+  it('hydrates from serialized payloads', () => {
+    const plain = { timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' };
+    expect(DateTz.isSerialized(plain)).toBe(true);
+    const hydrated = DateTz.from(plain);
+    expect(hydrated).toBeInstanceOf(DateTz);
+    expect(hydrated.timezone).toBe('Europe/Rome');
+    expect(hydrated.timestamp).toBe(BASE_TIMESTAMP);
+  });
+
   it('reports comparability correctly', () => {
     const utc = new DateTz(BASE_TIMESTAMP, 'UTC');
     const rome = new DateTz(BASE_TIMESTAMP, 'Europe/Rome');

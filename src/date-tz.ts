@@ -1278,6 +1278,42 @@ export class DateTz implements IDateTz {
     return date;
   }
 
+  /**
+   * Type guard that checks whether a value is a serialized DateTz payload.
+   */
+  static isSerialized(value: unknown): value is DateTzSerialized {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+    const candidate = value as Record<string, unknown>;
+    return typeof candidate.timestamp === 'number' && typeof candidate.timezone === 'string';
+  }
+
+  /**
+   * Coerces different inputs into a DateTz instance.
+   */
+  static from(value: unknown, tz?: string): DateTz {
+    if (value instanceof DateTz) {
+      return value;
+    }
+    if (value instanceof Date) {
+      return new DateTz(value.getTime(), tz ?? 'UTC');
+    }
+    if (typeof value === 'number') {
+      return new DateTz(value, tz);
+    }
+    if (typeof value === 'object' && value !== null) {
+      if (DateTz.isSerialized(value)) {
+        return new DateTz(value);
+      }
+      const candidate = value as Partial<IDateTz>;
+      if (typeof candidate.timestamp === 'number') {
+        return new DateTz(candidate as IDateTz);
+      }
+    }
+    throw new Error('Unable to coerce value into a DateTz instance');
+  }
+
   get isDst(): boolean {
     return this.getOffsetInfo().isDst;
   }

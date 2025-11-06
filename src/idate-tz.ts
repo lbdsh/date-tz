@@ -59,7 +59,7 @@ export interface IDateTz {
   toObject?(): DateTzSerialized;
   toJSON?(): DateTzSerialized;
   toBSON?(): DateTzSerialized;
-  valueOf?(): number | DateTzSerialized;
+  valueOf?(): number | DateTzSerialized | object;
   isBefore?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isAfter?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
   isSame?(other: IDateTz, unit?: DateTzDiffUnit): boolean;
