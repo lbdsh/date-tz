@@ -1292,8 +1292,12 @@ export class DateTz implements IDateTz {
     if (!value || typeof value !== 'object') {
       return false;
     }
-    const candidate = value as Record<string, unknown>;
-    return typeof candidate.timestamp === 'number' && typeof candidate.timezone === 'string';
+    const candidate = value as { [key: string]: unknown; };
+    if (typeof candidate.timestamp === 'number' && typeof candidate.timezone === 'string') {
+      DateTz.hydrate(candidate as { timestamp: number; timezone?: string }, candidate.timezone as string);
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -1310,12 +1314,9 @@ export class DateTz implements IDateTz {
       return new DateTz(value, tz);
     }
     if (typeof value === 'object' && value !== null) {
-      if (DateTz.isSerialized(value)) {
-        return new DateTz(value);
-      }
-      const candidate = value as Partial<IDateTz>;
-      if (typeof candidate.timestamp === 'number') {
-        return new DateTz(candidate as IDateTz);
+      const hydrated = DateTz.maybeHydrate(value, tz);
+      if (hydrated) {
+        return hydrated;
       }
     }
     throw new Error('Unable to coerce value into a DateTz instance');
@@ -1437,23 +1438,29 @@ export class DateTz implements IDateTz {
   }
 
   private static coerce(value: unknown, fallbackTz?: string): DateTz {
-    if (value instanceof DateTz) {
-      return value;
-    }
-    if (DateTz.isSerialized(value)) {
-      return new DateTz(value);
-    }
-    if (value && typeof value === 'object') {
-      const candidate = value as Partial<IDateTz>;
-      if (typeof candidate.timestamp === 'number') {
-        const tz = typeof candidate.timezone === 'string' ? candidate.timezone : fallbackTz ?? 'UTC';
-        return new DateTz({ timestamp: candidate.timestamp, timezone: tz });
-      }
+    const hydrated = DateTz.maybeHydrate(value, fallbackTz);
+    if (hydrated) {
+      return hydrated;
     }
     if (typeof value === 'number') {
       return new DateTz(value, fallbackTz);
     }
     throw new Error('Unable to coerce value into a DateTz instance');
+  }
+
+  static maybeHydrate(value: unknown, tz?: string): DateTz | undefined {
+    if (!value || typeof value !== 'object') {
+      return undefined;
+    }
+    if (value instanceof DateTz) {
+      return value;
+    }
+    const candidate = value as { timestamp?: unknown; timezone?: unknown; [key: string]: unknown; };
+    if (typeof candidate.timestamp !== 'number') {
+      return undefined;
+    }
+    const timezone = typeof candidate.timezone === 'string' ? candidate.timezone : tz ?? 'UTC';
+    return DateTz.hydrate(candidate as { timestamp: number; timezone?: string; }, timezone);
   }
 
   get isDst(): boolean {

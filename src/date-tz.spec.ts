@@ -172,6 +172,7 @@ describe('DateTz', () => {
     const plain = { timestamp: BASE_TIMESTAMP, timezone: 'Europe/Rome' };
     expect(DateTz.isSerialized(plain)).toBe(true);
     const hydrated = DateTz.from(plain);
+    expect(hydrated).toBe(plain);
     expect(hydrated).toBeInstanceOf(DateTz);
     expect(hydrated.timezone).toBe('Europe/Rome');
     expect(hydrated.timestamp).toBe(BASE_TIMESTAMP);
