@@ -1,5 +1,5 @@
 import { DateTzDiffUnit, DateTzDurationLike, DateTzGranularity, DateTzInclusivity, IDateTz } from "./idate-tz";
-import { timezones } from "./timezones";
+import { TimezoneOffset, timezones } from "./timezones";
 
 const MS_PER_SECOND = 1000;
 const MS_PER_MINUTE = 60000;
@@ -107,7 +107,7 @@ export class DateTz implements IDateTz {
   /**
    * Gets the timezone offset in minutes.
    */
-  get timezoneOffset() {
+  get timezoneOffset(): TimezoneOffset | undefined {
     return timezones[this.timezone];
   }
 
